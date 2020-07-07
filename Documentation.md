@@ -11,4 +11,3 @@ Radar is available on npm:
 ```bash
 npm install @botbind/radar
 ```
-
