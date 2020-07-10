@@ -150,7 +150,9 @@ internals.request = function (url, settings, callback) {
 
         // Modify settings
 
-        if (redirectMethod === 'GET') {
+        if (redirectMethod === 'GET' ||
+            redirectMethod === 'HEAD') {
+
             delete settings.payload;
             delete settings.headers['content-length'];
             delete settings.headers['content-type'];

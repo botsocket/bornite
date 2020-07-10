@@ -16,7 +16,7 @@ exports.options = Lyra.obj({
             is: Lyra.str().insensitive().valid('GET', 'HEAD'),
             then: Lyra.forbidden(),
         })
-        .messages({ 'alternatives.any': '{#label} must be a string or a serializable object' }),
+        .messages({ 'alternatives.any': '{#label} must be a string, a buffer, a stream or a serializable object' }),
 
     agent: Lyra.obj(),
 
