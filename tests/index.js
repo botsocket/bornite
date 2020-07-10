@@ -1,66 +1,808 @@
 'use strict';
 
+const Http = require('http');
+const Zlib = require('zlib');
+const Stream = require('stream');
+
 const Dust = require('@botbind/dust');
-const Express = require('express');
 
 const Radar = require('../src');
 
 const internals = {
-    server: null,
-    baseUrl: 'http://localhost:3000',
+    baseUrl: 'http://localhost:3000/',
+    defaultPayload: 'Some random string',
+    jsonPayload: {
+        a: 1,
+        b: 'x',
+        c: {
+            d: 1,
+        },
+    },
 };
 
+internals.longPayload = new Array(100).join(internals.defaultPayload);
+internals.gzipPayload = Zlib.gzipSync(internals.defaultPayload);
+internals.bufferPayload = Buffer.from(internals.defaultPayload);
+internals.streamPayload = new Stream.Readable({
+    read() {
+        this.push(internals.defaultPayload);
+        this.push(null);
+    },
+});
+
 describe('request()', () => {
-    afterEach(() => {
-        if (internals.server) {
-            internals.server.close();
-        }
+    it('should throw on incorrect parameters', () => {
+        expect(() => Radar.request(1)).toThrow('URL must be a string');
+        expect(() => Radar.request('x', 'x')).toThrow('Options must be an object');
+        expect(() => Radar.request('x', { method: 1 })).toThrow('method must be a string');
+        expect(() => Radar.request('x', { method: 'GET', headers: 'x' })).toThrow('headers must be an object');
+        expect(() => Radar.request('x', { method: 'x', payload: 1 })).toThrow('payload must be a string or a serializable object');
+        expect(() => Radar.request('x', { method: 'GET', payload: {} })).toThrow('payload is forbidden');
+        expect(() => Radar.request('x', { method: 'GeT', payload: {} })).toThrow('payload is forbidden');
+        expect(() => Radar.request('x', { method: 'head', payload: {} })).toThrow('payload is forbidden');
+        expect(() => Radar.request('x', { method: 'x', redirects: 'x' })).toThrow('redirects must be a number');
+        expect(() => Radar.request('x', { method: 'x', redirects: 1.5 })).toThrow('redirects must be an integer');
+        expect(() => Radar.request('x', { method: 'x', redirects: -1 })).toThrow('redirects must be greater than or equal to 0');
+        expect(() => Radar.request('x', { method: 'x', redirectMethod: 1 })).toThrow('redirectMethod must be a string');
+        expect(() => Radar.request('x', { method: 'x', gzip: 1 })).toThrow('gzip must be a boolean');
+        expect(() => Radar.request('x', { method: 'x', maxBytes: 'x' })).toThrow('maxBytes must be a number');
+        expect(() => Radar.request('x', { method: 'x', timeout: 'x' })).toThrow('timeout must be a number');
     });
 
-    describe('GET', () => {
-        it('should get json', async () => {
-            const endpoint = '/json';
-            const json = {
-                a: 1,
-                b: 'x',
-                c: {
-                    d: 1,
-                },
-            };
+    it('should perform a get request', async () => {
+        const server = await internals.server((request, response) => {
+            expect(request.method).toBe('GET');
 
-            internals.createServer((app) => {
-                app.get(endpoint, (_, response) => {
-                    response.json(json);
-                });
-            });
-
-            const response = await internals.request(endpoint, { method: 'GET' });
-            expect(Dust.equal(response.payload, json)).toBe(true);
+            response.writeHead(200, { 'Content-Type': 'text/plain' });
+            response.end(internals.defaultPayload);
         });
 
-        it('should get raw text', async () => {
-            const endpoint = '/hello';
-            const text = '<h1>Hello</h1>';
+        const response = await Radar.get(internals.baseUrl);
+        expect(response.payload).toBe(internals.defaultPayload);
 
-            internals.createServer((app) => {
-                app.get(endpoint, (_, response) => {
-                    response.send(text);
-                });
+        server.close();
+    });
+
+    it('should get json', async () => {
+        const server = await internals.server((_, response) => {
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            response.end(JSON.stringify(internals.jsonPayload));
+        });
+
+        const response = await Radar.get(internals.baseUrl);
+        expect(Dust.equal(response.payload, internals.jsonPayload)).toBe(true);
+
+        server.close();
+    });
+
+    it('should reject on corrupted json', async () => {
+        const server = await internals.server((_, response) => {
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            response.end('{');
+        });
+
+        await expect(Radar.get(internals.baseUrl)).rejects.toThrow('Failed to parse JSON: Unexpected end of JSON input');
+
+        server.close();
+    });
+
+    it('should perform a post request', async () => {
+        const server = await internals.server((request, response) => {
+            expect(request.method).toBe('POST');
+            expect(request.headers['content-length']).toBe('18');
+
+            response.writeHead(200, { 'Content-Type': 'text/plain' });
+            request.pipe(response);
+        });
+
+        const response = await Radar.post(internals.baseUrl, { payload: internals.defaultPayload });
+        expect(response.payload).toBe(internals.defaultPayload);
+
+        server.close();
+    });
+
+    it('should perform a post request with json payload', async () => {
+        const server = await internals.server((request, response) => {
+            expect(request.headers['content-length']).toBe('27');
+            expect(request.headers['content-type']).toBe('application/json');
+
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            request.pipe(response);
+        });
+
+        const response = await Radar.post(internals.baseUrl, { payload: internals.jsonPayload });
+        expect(Dust.equal(response.payload, internals.jsonPayload)).toBe(true);
+
+        server.close();
+    });
+
+    it('should perform a post request with a payload with unicode characters', async () => {
+        const server = await internals.server((request, response) => {
+            expect(request.headers['content-length']).toBe('16');
+            expect(request.headers['content-type']).toBe('application/json');
+
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            request.pipe(response);
+        });
+
+        const payload = { content: 'Ȓ' };
+        const response = await Radar.post(internals.baseUrl, { payload });
+        expect(Dust.equal(response.payload, payload)).toBe(true);
+
+        server.close();
+    });
+
+    it('should perform a post request with buffer payload', async () => {
+        const server = await internals.server((request, response) => {
+            expect(request.headers['content-length']).toBe('18');
+
+            response.writeHead(200, { 'Content-Type': 'text/plain' });
+            request.pipe(response);
+        });
+
+        const response = await Radar.post(internals.baseUrl, { payload: internals.bufferPayload });
+        expect(response.payload).toBe(internals.defaultPayload);
+
+        server.close();
+    });
+
+    it('should perform a post request with stream payload', async () => {
+        const server = await internals.server((request, response) => {
+            response.writeHead(200);
+            request.pipe(response);
+        });
+
+        const response = await Radar.post(internals.baseUrl, { payload: internals.streamPayload });
+        expect(response.payload).toBe(internals.defaultPayload);
+
+        server.close();
+    });
+
+    it('should perform a post request with custom content-type', async () => {
+        const contentType = 'application/json-patch+json';
+        const server = await internals.server((request, response) => {
+            expect(request.headers['content-type']).toBe(contentType);
+
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            request.pipe(response);
+        });
+
+        const payload = [{ op: 'remove', path: '/test' }];
+        const response = await Radar.post(internals.baseUrl, {
+            payload,
+            headers: {
+                'Content-Type': contentType,
+            },
+        });
+
+        expect(Dust.equal(response.payload, payload)).toBe(true);
+
+        server.close();
+    });
+
+    it('should not override content-length if provided', async () => {
+        const server = await internals.server((request, response) => {
+            expect(request.headers['content-length']).toBe('18');
+
+            response.writeHead(200, { 'Content-Type': 'text/plain' });
+            request.pipe(response);
+        });
+
+        const response = await Radar.post(internals.baseUrl, {
+            payload: internals.defaultPayload,
+            headers: {
+                'Content-Length': 18,
+            },
+        });
+
+        expect(response.payload).toBe(internals.defaultPayload);
+
+        server.close();
+    });
+
+    it('should not override content-type if provided but lowercased', async () => {
+        const contentType = 'application/json-patch+json';
+        const server = await internals.server((request, response) => {
+            expect(request.headers['content-type']).toBe(contentType);
+
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            request.pipe(response);
+        });
+
+        const payload = [{ op: 'remove', path: '/test' }];
+        const response = await Radar.post(internals.baseUrl, {
+            payload,
+            headers: {
+                'content-type': contentType,
+            },
+        });
+
+        expect(Dust.equal(response.payload, payload)).toBe(true);
+
+        server.close();
+    });
+
+    it('should perform a post request with headers', async () => {
+        const server = await internals.server((request, response) => {
+            response.writeHead(200, { 'Content-Type': 'text/plain' });
+            request.pipe(response);
+        });
+
+        const response = await Radar.post(internals.baseUrl, {
+            payload: internals.defaultPayload,
+            headers: {
+                'User-Agent': 'radar',
+            },
+        });
+
+        expect(response.payload).toBe(internals.defaultPayload);
+
+        server.close();
+    });
+
+    it('should request to an https resource', async () => {
+        const response = await Radar.get('https://www.google.com');
+
+        expect(response.payload.toLowerCase().includes('</html>')).toBe(true);
+    });
+
+    it('should not decompress by default', async () => {
+        const server = await internals.server((_, response) => {
+            response.writeHead(200, { 'Content-Type': 'text/plain', 'Content-Encoding': 'gzip' });
+            response.end(internals.gzipPayload);
+        });
+
+        const response = await Radar.get(internals.baseUrl);
+        expect(response.payload).toBe(internals.gzipPayload.toString());
+
+        server.close();
+    });
+
+    it('should decompress if gzip is set to true', async () => {
+        const server = await internals.server((request, response) => {
+            expect(request.headers['accept-encoding']).toBe('gzip');
+
+            response.writeHead(200, { 'Content-Type': 'text/plain', 'Content-Encoding': 'gzip' });
+            response.end(internals.gzipPayload);
+        });
+
+        const response = await Radar.get(internals.baseUrl, { gzip: true });
+        expect(response.payload).toBe(internals.defaultPayload);
+
+        server.close();
+    });
+
+    it('should decompress json', async () => {
+        const gzipped = Zlib.gzipSync(JSON.stringify(internals.jsonPayload));
+        const server = await internals.server((request, response) => {
+            expect(request.headers['accept-encoding']).toBe('gzip');
+
+            response.writeHead(200, { 'Content-Type': 'application/json', 'Content-Encoding': 'gzip' });
+            response.end(gzipped);
+        });
+
+        const response = await Radar.get(internals.baseUrl, { gzip: true });
+        expect(Dust.equal(response.payload, internals.jsonPayload)).toBe(true);
+
+        server.close();
+    });
+
+    it('should not decompress if no Content-Encoding is specified', async () => {
+        const server = await internals.server((request, response) => {
+            expect(request.headers['accept-encoding']).toBe('gzip');
+
+            response.writeHead(200, { 'Content-Type': 'text/plain' });
+            response.end(internals.gzipPayload);
+        });
+
+        const response = await Radar.get(internals.baseUrl, { gzip: true });
+        expect(response.payload).toBe(internals.gzipPayload.toString());
+
+        server.close();
+    });
+
+    it('should decompress for x-gzip encoding', async () => {
+        const server = await internals.server((request, response) => {
+            expect(request.headers['accept-encoding']).toBe('gzip');
+
+            response.writeHead(200, { 'Content-Type': 'text/plain', 'Content-Encoding': 'x-gzip' });
+            response.end(internals.gzipPayload);
+        });
+
+        const response = await Radar.get(internals.baseUrl, { gzip: true });
+        expect(response.payload).toBe(internals.defaultPayload);
+
+        server.close();
+    });
+
+    it('should not decompress any other Content-Encoding', async () => {
+        const server = await internals.server((_, response) => {
+            response.writeHead(200, { 'Content-Type': 'text/plain', 'Content-Encoding': 'deflate' });
+            response.end(internals.gzipPayload);
+        });
+
+        const response = await Radar.get(internals.baseUrl, { gzip: true });
+        expect(response.payload).toBe(internals.gzipPayload.toString());
+
+        server.close();
+    });
+
+    it('should throw on corrupted compression', async () => {
+        const server = await internals.server((_, response) => {
+            response.writeHead(200, { 'Content-Type': 'text/plain', 'Content-Encoding': 'gzip' });
+            response.end(internals.gzipPayload.toString() + 'some random stuff that is not compressed');
+        });
+
+        await expect(Radar.get(internals.baseUrl, { gzip: true })).rejects.toThrow('Failed to decompress: incorrect header check');
+
+        server.close();
+    });
+
+    it('should handle basic authentication', async () => {
+        const auth = 'username:password';
+        const encoded = Buffer.from(auth).toString('base64');
+        const server = await internals.server((request, response) => {
+            expect(request.headers.authorization).toBe(`Basic ${encoded}`);
+
+            response.writeHead(200, { 'Content-Type': 'text/plain' });
+            response.end(internals.defaultPayload);
+        });
+
+        const response = await Radar.get(`http://${auth}@localhost:3000`);
+        expect(response.payload).toBe(internals.defaultPayload);
+
+        server.close();
+    });
+
+    it('should handle basic authentication without username', async () => {
+        const auth = ':password';
+        const encoded = Buffer.from(auth).toString('base64');
+        const server = await internals.server((request, response) => {
+            expect(request.headers.authorization).toBe(`Basic ${encoded}`);
+
+            response.writeHead(200, { 'Content-Type': 'text/plain' });
+            response.end(internals.defaultPayload);
+        });
+
+        const response = await Radar.get(`http://${auth}@localhost:3000`);
+        expect(response.payload).toBe(internals.defaultPayload);
+
+        server.close();
+    });
+
+    it('should reject if response payload exceeds maxBytes', async () => {
+        const server = await internals.server((_, response) => {
+            response.writeHead(200, { 'Content-Type': 'text/plain' });
+            response.end(internals.longPayload);
+        });
+
+        await expect(Radar.get(internals.baseUrl, { maxBytes: 100 })).rejects.toThrow('Maximum payload size reached');
+
+        server.close();
+    });
+
+    it('should not reject response payload if less than maxBytes', async () => {
+        const server = await internals.server((_, response) => {
+            response.writeHead(200, { 'Content-Type': 'text/plain' });
+            response.end(internals.longPayload);
+        });
+
+        const response = await Radar.get(internals.baseUrl, { maxBytes: 10000 });
+        expect(response.payload).toBe(internals.longPayload);
+
+        server.close();
+    });
+
+    it('should handle 4xx errors', async () => {
+        const server = await internals.server((_, response) => {
+            response.writeHead(404);
+            response.end();
+        });
+
+        const response = await Radar.get(internals.baseUrl);
+
+        expect(response.statusCode).toBe(404);
+        expect(response.statusMessage).toBe('Not Found');
+
+        server.close();
+    });
+
+    it('should handle request errors', async () => {
+        const original = Http.request;
+        const request = new Stream.Writable();
+
+        Http.request = function () {
+            return request;
+        };
+
+        const server = await internals.server((_, response) => {
+            response.end();
+        });
+
+        const promise = Radar.get(internals.baseUrl);
+
+        request.emit('error', new Error('Some error'));
+
+        await expect(promise).rejects.toThrow('Some error');
+
+        server.close();
+        Http.request = original; // eslint-disable-line require-atomic-updates
+    });
+
+    it('should reject when host is unavailable', async () => {
+        await expect(Radar.get(internals.baseUrl)).rejects.toThrow('connect ECONNREFUSED 127.0.0.1:3000');
+    });
+
+    it('should perform a patch request', async () => {
+        const server = await internals.server((request, response) => {
+            expect(request.method).toBe('PATCH');
+
+            response.end();
+        });
+
+        await Radar.patch(internals.baseUrl);
+
+        server.close();
+    });
+
+    it('should perform a put request', async () => {
+        const server = await internals.server((request, response) => {
+            expect(request.method).toBe('PUT');
+
+            response.end();
+        });
+
+        await Radar.put(internals.baseUrl);
+
+        server.close();
+    });
+
+    it('should perform a delete request', async () => {
+        const server = await internals.server((request, response) => {
+            expect(request.method).toBe('DELETE');
+
+            response.end();
+        });
+
+        await Radar.delete(internals.baseUrl);
+
+        server.close();
+    });
+
+    it('should pass custom agents to Http.request', async () => {
+        const agent = new Http.Agent({ maxSockets: 5 });
+        const original = Http.request;
+
+        Http.request = function (options) {
+            expect(options.agent).toBe(agent);
+
+            return original(options);
+        };
+
+        const server = await internals.server((_, response) => {
+            response.end();
+        });
+
+        await Radar.get(internals.baseUrl, { agent });
+
+        server.close();
+        Http.request = original; // eslint-disable-line require-atomic-updates
+    });
+
+    describe('Redirects', () => {
+        it('should not follow redirects by default', async () => {
+            const server = await internals.server((_, response) => {
+                response.writeHead(301, { Location: '/' });
+                response.end();
             });
 
-            const response = await internals.request(endpoint, { method: 'GET' });
-            expect(Dust.equal(response.payload, text)).toBe(true);
+            await expect(Radar.post(internals.baseUrl)).rejects.toThrow('Maximum redirects reached');
+
+            server.close();
+        });
+
+        it('should not follow redirects if redirects is set to false', async () => {
+            const server = await internals.server((_, response) => {
+                response.writeHead(301, { Location: '/' });
+                response.end();
+            });
+
+            await expect(Radar.post(internals.baseUrl, { redirects: false })).rejects.toThrow('Maximum redirects reached');
+
+            server.close();
+        });
+
+        it('should reject stream payloads', async () => {
+            const server = await internals.server((_, response) => {
+                response.writeHead(301, { Location: '/' });
+                response.end();
+            });
+
+            await expect(Radar.post(internals.baseUrl, { redirects: 1, payload: internals.streamPayload }))
+                .rejects
+                .toThrow('Cannot follow redirects with stream payloads');
+
+            server.close();
+        });
+
+        it('should follow all redirects if redirects is set to Infinity', async () => {
+            let count = 0;
+            const server = await internals.server((request, response) => {
+                if (count < 3) {
+                    response.writeHead(301, { Location: '/' });
+                    response.end();
+                    count++;
+                    return;
+                }
+
+                expect(request.url).toBe('/');
+                expect(request.method).toBe('POST');
+                expect(request.headers['content-length']).toBe('18');
+
+                response.writeHead(200, { 'Content-Type': 'text/plain' });
+                request.pipe(response);
+            });
+
+            const response = await Radar.post(internals.baseUrl, { redirects: Infinity, payload: internals.defaultPayload });
+            expect(response.payload).toBe(internals.defaultPayload);
+
+            server.close();
+        });
+
+        it('should reject if reaches maximum redirects', async () => {
+            let count = 0;
+            const server = await internals.server((_, response) => {
+                if (count < 2) {
+                    response.writeHead(301, { Location: '/' });
+                    response.end();
+                    count++;
+                }
+            });
+
+            await expect(Radar.post(internals.baseUrl, { redirects: 1 })).rejects.toThrow('Maximum redirects reached');
+
+            server.close();
+        });
+
+        it('should reject on redirects without headers', async () => {
+            const server = await internals.server((_, response) => {
+                response.writeHead(301);
+                response.end();
+            });
+
+            await expect(Radar.post(internals.baseUrl, { redirects: 1 })).rejects.toThrow('Redirect without location');
+
+            server.close();
+        });
+
+        it('should allow changing redirect methods', async () => {
+            let redirected = false;
+            const server = await internals.server((request, response) => {
+                if (!redirected) {
+                    response.writeHead(301, { Location: '/' });
+                    response.end();
+                    redirected = true;
+                    return;
+                }
+
+                expect(request.url).toBe('/');
+                expect(request.method).toBe('POST');
+
+                response.writeHead(200, { 'Content-Type': 'text/plain' });
+                response.end(internals.defaultPayload);
+            });
+
+            const response = await Radar.get(internals.baseUrl, { redirects: 1, redirectMethod: 'POST' });
+            expect(response.payload).toBe(internals.defaultPayload);
+
+            server.close();
+        });
+
+        it('should strip payload if redirect method is GET (302)', async () => {
+            let redirected = false;
+            const server = await internals.server(async (request, response) => {
+                if (!redirected) {
+                    response.writeHead(302, { Location: '/' });
+                    response.end();
+                    redirected = true;
+                    return;
+                }
+
+                expect(request.url).toBe('/');
+                expect(request.method).toBe('GET');
+                expect(request.headers['content-type']).toBe(undefined);
+                expect(request.headers['content-length']).toBe(undefined);
+
+                const payload = await internals.read(request);
+                expect(payload).toBe('');
+
+                response.writeHead(200, { 'Content-Type': 'text/plain' });
+                response.end(internals.defaultPayload);
+            });
+
+            const response = await Radar.post(internals.baseUrl, {
+                redirects: 1,
+                redirectMethod: 'GET',
+                payload: internals.jsonPayload,
+            });
+
+            expect(response.payload).toBe(internals.defaultPayload);
+
+            server.close();
+        });
+
+        it('should strip payload for 303 redirects', async () => {
+            let redirected = false;
+            const server = await internals.server(async (request, response) => {
+                if (!redirected) {
+                    response.writeHead(303, { Location: '/' });
+                    response.end();
+                    redirected = true;
+                    return;
+                }
+
+                expect(request.url).toBe('/');
+                expect(request.method).toBe('GET');
+                expect(request.headers['content-type']).toBe(undefined);
+                expect(request.headers['content-length']).toBe(undefined);
+
+                const payload = await internals.read(request);
+                expect(payload).toBe('');
+
+                response.writeHead(200, { 'Content-Type': 'text/plain' });
+                response.end(internals.defaultPayload);
+            });
+
+            const response = await Radar.post(internals.baseUrl, {
+                redirects: 1,
+                payload: internals.jsonPayload,
+            });
+
+            expect(response.payload).toBe(internals.defaultPayload);
+
+            server.close();
+        });
+
+        it('should not override redirect method (307)', async () => {
+            let redirected = false;
+            const server = await internals.server((request, response) => {
+                if (!redirected) {
+                    response.writeHead(307, { Location: '/' });
+                    response.end();
+                    redirected = true;
+                    return;
+                }
+
+                expect(request.url).toBe('/');
+                expect(request.method).toBe('POST');
+                expect(request.headers['content-length']).toBe('18');
+
+                response.writeHead(200, { 'Content-Type': 'text/plain' });
+                request.pipe(response);
+            });
+
+            const response = await Radar.post(internals.baseUrl, {
+                redirects: 1,
+                redirectMethod: 'GET',
+                payload: internals.defaultPayload,
+            });
+
+            expect(response.payload).toBe(internals.defaultPayload);
+
+            server.close();
+        });
+
+        it('should not override redirect method (308)', async () => {
+            let redirected = false;
+            const server = await internals.server((request, response) => {
+                if (!redirected) {
+                    response.writeHead(308, { Location: '/' });
+                    response.end();
+                    redirected = true;
+                    return;
+                }
+
+                expect(request.url).toBe('/');
+                expect(request.method).toBe('POST');
+                expect(request.headers['content-length']).toBe('18');
+
+                response.writeHead(200, { 'Content-Type': 'text/plain' });
+                request.pipe(response);
+            });
+
+            const response = await Radar.post(internals.baseUrl, {
+                redirects: 1,
+                redirectMethod: 'GET',
+                payload: internals.defaultPayload,
+            });
+
+            expect(response.payload).toBe(internals.defaultPayload);
+
+            server.close();
+        });
+
+        it('should redirect with absolute locations', async () => {
+            let redirected = false;
+            const server = await internals.server((request, response) => {
+                if (!redirected) {
+                    response.writeHead(301, { Location: internals.baseUrl });
+                    response.end();
+                    redirected = true;
+                    return;
+                }
+
+                expect(request.url).toBe('/');
+                expect(request.headers['content-length']).toBe('18');
+
+                response.writeHead(200, { 'Content-Type': 'text/plain' });
+                request.pipe(response);
+            });
+
+            const response = await Radar.post(internals.baseUrl, { redirects: 1, payload: internals.defaultPayload });
+            expect(response.payload).toBe(internals.defaultPayload);
+
+            server.close();
+        });
+
+        it('should redirect with json', async () => {
+            let redirected = false;
+            const server = await internals.server((request, response) => {
+                if (!redirected) {
+                    response.writeHead(301, { Location: '/' });
+                    response.end();
+                    redirected = true;
+                    return;
+                }
+
+                expect(request.url).toBe('/');
+                expect(request.method).toBe('POST');
+                expect(request.headers['content-length']).toBe('27');
+                expect(request.headers['content-type']).toBe('application/json');
+
+                response.writeHead(200, { 'Content-Type': 'application/json' });
+                request.pipe(response);
+            });
+
+            const response = await Radar.post(internals.baseUrl, { redirects: 1, payload: internals.jsonPayload });
+            expect(Dust.equal(response.payload, internals.jsonPayload)).toBe(true);
+
+            server.close();
+        });
+
+        it('should redirect to a different host', async () => {
+            const server = await internals.server((_, response) => {
+                response.writeHead(301, { Location: 'https://www.google.com' });
+                response.end();
+            });
+
+            const response = await Radar.get(internals.baseUrl, { redirects: 1 });
+            expect(response.payload.toLowerCase().includes('</html>')).toBe(true);
+
+            server.close();
         });
     });
 });
 
-internals.createServer = function (setup) {
-    const app = Express();
+internals.server = function (handler) {
+    const server = Http.createServer(handler);
 
-    setup(app);
-    internals.server = app.listen(3000);
+    return new Promise((resolve) => {
+        server.listen(3000, () => {
+            resolve(server);
+        });
+    });
 };
 
-internals.request = function (url, options) {
-    return Radar.request(internals.baseUrl + url, options);
+internals.read = function (stream) {
+    return new Promise((resolve) => {
+        const data = [];
+
+        stream.on('data', (chunk) => {
+            data.push(chunk);
+        });
+
+        stream.once('end', () => {
+            resolve(Buffer.concat(data).toString());
+        });
+    });
 };

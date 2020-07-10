@@ -7,131 +7,112 @@ const Stream = require('stream');
 const Zlib = require('zlib');
 
 const Dust = require('@botbind/dust');
-const Lyra = require('@botbind/lyra');
+
+const Schemas = require('./schemas');
 
 const internals = {
     protocolRx: /^https?:/i,
 };
 
-internals.schema = Lyra.obj({
-    method: Lyra.str()
-        .uppercase()
-        .convert()
-        .required(),
-
-    headers: Lyra.obj(),
-
-    payload: Lyra.alt(
-        Lyra.str().allow(''),
-        Lyra.obj(),
-    )
-        .when('method', {
-            is: ['GET', 'HEAD'],
-            then: Lyra.forbidden(),
-        }),
-
-    redirect: Lyra.alt(
-        Lyra.bool(),
-        Lyra.num().min(1),
-    )
-        .default(false),
-
-    redirectMethod: Lyra.str()
-        .uppercase()
-        .convert()
-        .default(Lyra.ref('method')),
-
-    gzip: Lyra.bool().default(false),
-
-    maxBytes: Lyra.num(),
-
-    timeout: Lyra.num(),
-})
-    .default();
-
 exports.request = function (url, options) {
-    const settings = internals.schema.attempt(options);
+    // Validate parameters
+
+    Dust.assert(typeof url === 'string', 'URL must be a string');
+
+    const settings = Schemas.options.attempt(options);
+
+    // Normalize settings
+
     settings.headers = internals.normalizeHeaders(settings.headers);
+    settings.method = settings.method.toUpperCase();
+    settings.redirectMethod = settings.redirectMethod.toUpperCase();
+
+    // Normalize payload and headers
+
+    if (settings.gzip &&
+        !settings.headers['accept-encoding']) {
+
+        settings.headers['accept-encoding'] = 'gzip';
+    }
+
+    if (typeof settings.payload === 'object' &&
+        settings.payload instanceof Stream === false &&
+        !Buffer.isBuffer(settings.payload)) {
+
+        settings.payload = JSON.stringify(settings.payload);
+
+        if (!settings.headers['content-type']) {
+            settings.headers['content-type'] = 'application/json';
+        }
+    }
+
+    const isBuffer = Buffer.isBuffer(settings.payload);
+    if ((typeof settings.payload === 'string' || isBuffer) &&
+        !settings.headers['content-length']) {
+
+        settings.headers['content-length'] = isBuffer
+            ? settings.payload.length
+            : Buffer.byteLength(settings.payload);
+    }
+
+    // Request
 
     return new Promise((resolve, reject) => {
-        internals.request(url, settings, { resolve, reject });
+        internals.request(url, settings, (error, response) => {
+            if (error) {
+                return reject(error);
+            }
+
+            return resolve(response);
+        });
     });
 };
 
 internals.normalizeHeaders = function (headers) {
     const normalized = {};
-    for (const header of Object.keys(headers)) {
-        normalized[header.toLowerCase()] = headers[header];
+    for (const key of Object.keys(headers)) {
+        normalized[key.toLowerCase()] = headers[key];
     }
 
     return normalized;
 };
 
-internals.request = function (url, settings, relay) {
+internals.request = function (url, settings, callback) {
     // Parse url
 
     const parsedUrl = new URL.URL(url);
 
     // Construct request options
 
-    const requestOptions = {
+    const options = {
         hostname: parsedUrl.hostname,
         path: parsedUrl.pathname + parsedUrl.search,
         protocol: parsedUrl.protocol,
         headers: settings.headers,
         method: settings.method,
+        agent: settings.agent,
         timeout: settings.timeout,
     };
 
     if (parsedUrl.port) {
-        requestOptions.port = Number(parsedUrl.port);
+        options.port = Number(parsedUrl.port);
     }
 
     if (parsedUrl.username ||
         parsedUrl.password) {
 
-        requestOptions.auth = `${url.username}:${url.password}`;
+        options.auth = `${parsedUrl.username}:${parsedUrl.password}`;
     }
 
-    // Set Accept-Encoding
+    // Request
 
-    if (settings.gzip && !requestOptions.headers['accept-encoding']) {
-        requestOptions.headers['accept-encoding'] = 'gzip';
-    }
+    const client = options.protocol === 'https:' ? Https : Http;
+    const request = client.request(options);
 
-    // Process body and set Content-Type
-
-    if (settings.payload &&
-        typeof payload === 'object' &&
-        settings.payload instanceof Stream === false &&
-        !Buffer.isBuffer(settings.payload)) {
-
-        requestOptions.payload = JSON.stringify(settings.payload);
-
-        if (!requestOptions.headers['content-type']) {
-            requestOptions.headers['content-type'] = 'application/json';
-        }
-    }
-
-    // Calculate Content-Length
-
-    const isBuffer = Buffer.isBuffer(requestOptions.payload);
-    if ((typeof requestOptions.payload === 'string' || isBuffer) &&
-        !requestOptions.headers['content-length']) {
-
-        requestOptions.headers['content-length'] = isBuffer
-            ? requestOptions.payload.length
-            : Buffer.byteLength(requestOptions.payload);
-    }
-
-    // Send the request
-
-    const client = requestOptions.protocol === 'https:' ? Https : Http;
-    const request = client.request(requestOptions);
-
-    const finalize = (error) => {
-        relay.reject(error);
+    const finalize = (error, response) => {
         request.destroy();
+        request.removeAllListeners();
+        callback(error, response);
     };
 
     request.once('error', (error) => {
@@ -139,27 +120,25 @@ internals.request = function (url, settings, relay) {
     });
 
     request.once('response', (response) => {
-        const redirectMethod = internals.redirectMethod(response.statusCode, requestOptions.method, settings);
+        const redirectMethod = internals.redirectMethod(response.statusCode, options.method, settings);
 
-        if (settings.redirect === false || // Redirect could be 0 for subsequent redirections
-            !redirectMethod) {
-
-            internals.response(response, settings, relay);
+        if (!redirectMethod) {
+            internals.read(response, settings, finalize);
             return;
         }
 
-        // Redirection
+        // Redirect
 
         response.destroy();
 
-        if (settings.redirect === 0) {
-            finalize(new Error('Maximum redirections reached'));
+        if (!settings.redirects) {
+            finalize(new Error('Maximum redirects reached'));
             return;
         }
 
         let location = response.headers.location;
         if (!location) {
-            finalize(new Error('Redirection without location'));
+            finalize(new Error('Redirect without location'));
             return;
         }
 
@@ -169,38 +148,33 @@ internals.request = function (url, settings, relay) {
             location = URL.resolve(parsedUrl.href, location);
         }
 
-        // Modify the settings
+        // Modify settings
 
-        const newSettings = { ...settings };
-
-        if (redirectMethod === 'GET') { // Delete the payload so the next recursive call will not get confused
-            delete newSettings.payload;
+        if (redirectMethod === 'GET') {
+            delete settings.payload;
+            delete settings.headers['content-length'];
+            delete settings.headers['content-type'];
         }
 
-        if (newSettings.payload &&
-            newSettings.payload instanceof Stream) {
-
-            finalize(new Error('Cannot follow redirections with stream bodies'));
+        if (settings.payload instanceof Stream) {
+            finalize(new Error('Cannot follow redirects with stream payloads'));
             return;
         }
 
         settings.method = redirectMethod;
-        settings.redirect--;
+        settings.redirects--;
 
-        internals.request(location, settings, relay);
+        internals.request(location, settings, finalize);
     });
 
     // Write payload
 
     if (settings.payload) {
-        // Streams
-
         if (settings.payload instanceof Stream) {
-            request.pipe(settings.payload);
+            settings.payload.pipe(request);
             return;
         }
 
-        // String (including json), Buffer
         request.write(settings.payload);
     }
 
@@ -208,8 +182,6 @@ internals.request = function (url, settings, relay) {
 };
 
 internals.redirectMethod = function (code, method, settings) {
-    // https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#3xx_Redirection
-
     switch (code) {
         case 301:
         case 302: return settings.redirectMethod; // 301 and 302 allows changing methods
@@ -219,49 +191,53 @@ internals.redirectMethod = function (code, method, settings) {
     }
 };
 
-internals.response = function (response, settings, relay) {
-    // Normalize headers
-
-    const headers = internals.normalizeHeaders(response.headers);
-
+internals.read = function (response, settings, callback) {
     // Setup reader
 
     const reader = new internals.Reader(settings.maxBytes);
 
-    const finalize = (error, stream) => {
-        relay.reject(error);
-        response.destroy();
-        stream.destroy();
+    const finalize = (error, content) => {
+        reader.destroy();
+        reader.removeAllListeners();
+        callback(error, content);
     };
 
     reader.once('error', (error) => {
-        finalize(error, reader);
+        finalize(error);
     });
 
     reader.once('finish', () => {
-        const contentType = headers['content-type'] || '';
+        const contentType = response.headers['content-type'] || '';
         const mime = contentType.split(';')[0].trim().toLowerCase();
-        let payload = reader.content().toString();
+        let payload = reader.content();
 
         if (mime === 'application/json') {
-            payload = JSON.parse(payload);
+            try {
+                payload = JSON.parse(payload);
+            }
+            catch (error) {
+                finalize(new Error(`Failed to parse JSON: ${error.message}`));
+                return;
+            }
         }
 
-        relay.resolve({
-            headers,
+        finalize(null, {
             payload,
+            headers: response.headers,
+            statusCode: response.statusCode,
+            statusMessage: response.statusMessage,
             raw: response,
         });
     });
 
-    // Compression
+    // Decompress
 
-    if (!settings.gzip) { // Compression set to false
+    if (!settings.gzip) {
         response.pipe(reader);
         return;
     }
 
-    const contentEncoding = headers['content-encoding'] || '';
+    const contentEncoding = response.headers['content-encoding'] || '';
 
     if (settings.method === 'HEAD' ||
         !contentEncoding ||
@@ -275,13 +251,16 @@ internals.response = function (response, settings, relay) {
     if (contentEncoding === 'gzip' ||
         contentEncoding === 'x-gzip') {
 
-        const gzip = Zlib.createGunzip();
+        const gunzip = Zlib.createGunzip();
 
-        gzip.once('error', (error) => {
-            finalize(error, gzip);
+        gunzip.once('error', (error) => {
+            gunzip.destroy();
+            gunzip.removeAllListeners();
+
+            finalize(new Error(`Failed to decompress: ${error.message}`));
         });
 
-        response.pipe(gzip).pipe(reader);
+        response.pipe(gunzip).pipe(reader);
         return;
     }
 
@@ -310,7 +289,7 @@ internals.Reader = class extends Stream.Writable {
     }
 
     content() {
-        return Buffer.concat(this.buffers, this.length);
+        return Buffer.concat(this.buffers, this.length).toString();
     }
 };
 
