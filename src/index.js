@@ -281,7 +281,9 @@ internals.Reader = class extends Stream.Writable {
     _write(chunk, _, next) {
         this.length += chunk.length;
 
-        if (this.maxBytes && this.length > this.maxBytes) {
+        if (this.maxBytes &&
+            this.length > this.maxBytes) {
+
             this.emit('error', new Error('Maximum payload size reached'));
             return;
         }
