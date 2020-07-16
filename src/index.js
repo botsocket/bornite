@@ -6,20 +6,42 @@ const URL = require('url');
 const Stream = require('stream');
 const Zlib = require('zlib');
 
+const Lyra = require('@botbind/lyra');
 const Dust = require('@botbind/dust');
-
-const Schemas = require('./schemas');
 
 const internals = {
     protocolRx: /^https?:/i,
 };
+
+internals.schema = Lyra.obj({
+    method: Lyra.str().required(),
+    headers: Lyra.obj().default({}),
+    payload: Lyra.alt(
+        Lyra.str(),
+        Lyra.obj(),
+        Lyra.arr(),
+    )
+        .when('method', {
+            is: Lyra.str().insensitive().valid('GET', 'HEAD'),
+            then: Lyra.forbidden(),
+        })
+        .messages({ 'alternatives.any': '{#label} must be a string, a buffer, a stream or a serializable object' }),
+    agent: Lyra.obj(),
+    redirects: Lyra.num().integer().min(0).allow(Infinity, false).default(0),
+    redirectMethod: Lyra.str().default(Lyra.ref('method')),
+    gzip: Lyra.bool().default(false),
+    maxBytes: Lyra.num(),
+    timeout: Lyra.num(),
+})
+    .default()
+    .label('Options');
 
 exports.request = function (url, options) {
     // Validate parameters
 
     Dust.assert(typeof url === 'string', 'URL must be a string');
 
-    const settings = Schemas.options.attempt(options);
+    const settings = internals.schema.attempt(options);
 
     // Normalize settings
 
