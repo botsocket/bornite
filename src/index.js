@@ -37,6 +37,7 @@ internals.schema = Lyra.obj({
     .label('Options');
 
 exports.request = function (url, options) {
+
     // Validate parameters
 
     Dust.assert(typeof url === 'string', 'URL must be a string');
@@ -80,7 +81,9 @@ exports.request = function (url, options) {
     // Request
 
     return new Promise((resolve, reject) => {
+
         internals.request(url, settings, (error, response) => {
+
             if (error) {
                 return reject(error);
             }
@@ -91,6 +94,7 @@ exports.request = function (url, options) {
 };
 
 internals.normalizeHeaders = function (headers) {
+
     const normalized = {};
     for (const key of Object.keys(headers)) {
         normalized[key.toLowerCase()] = headers[key];
@@ -100,6 +104,7 @@ internals.normalizeHeaders = function (headers) {
 };
 
 internals.request = function (url, settings, callback) {
+
     // Parse url
 
     const parsedUrl = new URL.URL(url);
@@ -132,16 +137,19 @@ internals.request = function (url, settings, callback) {
     const request = client.request(options);
 
     const finalize = (error, response) => {
+
         request.destroy();
         request.removeAllListeners();
         callback(error, response);
     };
 
     request.once('error', (error) => {
+
         finalize(error);
     });
 
     request.once('response', (response) => {
+
         const redirectMethod = internals.redirectMethod(response.statusCode, options.method, settings);
 
         if (!redirectMethod) {
@@ -206,31 +214,36 @@ internals.request = function (url, settings, callback) {
 };
 
 internals.redirectMethod = function (code, method, settings) {
+
     switch (code) {
         case 301:
-        case 302: return settings.redirectMethod; // 301 and 302 allows changing methods
-        case 303: return 'GET'; // 303 requires the method to be GET
+        case 302: return settings.redirectMethod;                   // 301 and 302 allows changing methods
+        case 303: return 'GET';                                     // 303 requires the method to be GET
         case 307:
-        case 308: return method; // 307 and 308 does not allow the method to change
+        case 308: return method;                                    // 307 and 308 does not allow the method to change
     }
 };
 
 internals.read = function (response, settings, callback) {
+
     // Setup reader
 
     const reader = new internals.Reader(settings.maxBytes);
 
     const finalize = (error, content) => {
+
         reader.destroy();
         reader.removeAllListeners();
         callback(error, content);
     };
 
     reader.once('error', (error) => {
+
         finalize(error);
     });
 
     reader.once('finish', () => {
+
         const contentType = response.headers['content-type'] || '';
         const mime = contentType.split(';')[0].trim().toLowerCase();
         let payload = reader.content();
@@ -278,6 +291,7 @@ internals.read = function (response, settings, callback) {
         const gunzip = Zlib.createGunzip();
 
         gunzip.once('error', (error) => {
+
             gunzip.destroy();
             gunzip.removeAllListeners();
 
@@ -293,6 +307,7 @@ internals.read = function (response, settings, callback) {
 
 internals.Reader = class extends Stream.Writable {
     constructor(maxBytes) {
+
         super();
 
         this.maxBytes = maxBytes;
@@ -301,6 +316,7 @@ internals.Reader = class extends Stream.Writable {
     }
 
     _write(chunk, _, next) {
+
         this.length += chunk.length;
 
         if (this.maxBytes &&
@@ -315,13 +331,16 @@ internals.Reader = class extends Stream.Writable {
     }
 
     content() {
+
         return Buffer.concat(this.buffers, this.length).toString();
     }
 };
 
 internals.shortcut = function () {
+
     for (const shortcut of ['get', 'post', 'put', 'patch', 'delete']) {
         exports[shortcut] = function (url, options = {}) {
+
             Dust.assert(!options.method, 'Option method is not allowed');
 
             return exports.request(url, { ...options, method: shortcut.toUpperCase() });
