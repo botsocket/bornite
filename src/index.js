@@ -53,6 +53,7 @@ internals.Radar = class {
         const settings = this._applyOptions(options);
 
         Dust.assert(typeof settings.method === 'string', 'Option method must be a string');
+        Dust.assert(settings.baseUrl === undefined || typeof settings.baseUrl === 'string', 'Option baseUrl must be a string');
         Dust.assert(!['GET', 'HEAD'].includes(settings.method.toUpperCase()) || settings.payload === undefined, 'Option payload cannot be provided when method is GET or HEAD');
         Dust.assert(settings.payload === undefined || typeof settings.payload === 'object' || typeof settings.payload === 'string', 'Option payload must be a string, a buffer, a stream or a serializable object');
         Dust.assert(settings.agent === undefined || typeof settings.agent === 'object', 'Option agent must be an object');
@@ -143,7 +144,7 @@ internals.request = function (url, settings, callback) {
 
     // Parse url
 
-    const parsedUrl = new Url.URL(url);
+    const parsedUrl = new Url.URL(url, settings.baseUrl);
 
     // Construct request options
 

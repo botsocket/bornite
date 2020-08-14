@@ -41,6 +41,7 @@ describe('custom()', () => {
     it('should request from custom instance', async () => {
 
         const custom = Radar.custom({
+            baseUrl: internals.baseUrl,
             method: 'POST',
             headers: {
                 header1: 'x',
@@ -50,6 +51,7 @@ describe('custom()', () => {
         const server = await internals.server((request, response) => {
 
             expect(request.method).toBe('POST');
+            expect(request.url).toBe('/test');
             expect(request.headers.header1).toBe('x');
             expect(request.headers.header2).toBe('y');
             expect(request.headers['content-length']).toBe('18');
@@ -58,7 +60,7 @@ describe('custom()', () => {
             request.pipe(response);
         });
 
-        const response = await custom.request(internals.baseUrl, {
+        const response = await custom.request('/test', {
             payload: internals.defaultPayload,
             headers: {
                 header2: 'y',
@@ -622,6 +624,29 @@ describe('request()', () => {
 
         server.close();
         Http.request = original; // eslint-disable-line require-atomic-updates
+    });
+
+    it('should resolve urls from baseUrl', async () => {
+
+        const server = await internals.server((request, response) => {
+
+            expect(request.method).toBe('GET');
+            expect(request.url).toBe('/test');
+
+            response.writeHead(200, { 'Content-Type': 'text/plain' });
+            response.end(internals.defaultPayload);
+        });
+
+        const response = await Radar.get('/test', { baseUrl: internals.baseUrl });
+        expect(response.payload).toBe(internals.defaultPayload);
+
+        server.close();
+    });
+
+    it('should resolve urls when url host is different from baseUrl', async () => {
+
+        const response = await Radar.get('https://www.google.com/', { baseUrl: internals.baseUrl });
+        expect(response.payload.toLowerCase().includes('</html>')).toBe(true);
     });
 
     describe('Redirects', () => {
