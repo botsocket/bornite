@@ -102,7 +102,7 @@ Makes a request where:
     -  `method`: The request method to use. Case-insensitive.
     -  `baseUrl`: Base URL that is resolved with `url` to form a full URL. Most useful when used with [`custom()`](#customoptions).
     -  `headers`: A hash of case-insensitive header names and their values. `Content-Length`, `Content-Type` and `Accept-Encoding` are set by default if possible.
-    -  `payload`: The request payload. Can be a string, a buffer, a stream or a serializable object. If `method` is `GET` or `HEAD`, this key is forbidden.
+    -  `payload`: The request payload. Can be a string, a buffer, a stream, `URLSearchParams` or a serializable object. If `method` is `GET` or `HEAD`, this key is forbidden.
     -  `agent`: The HTTP Agent passed directly to `Http.request()`.
     -  `redirects`: The number of redirects to follow. Set to `0` or `false` to disable redirection. Set to `Infinity` to follow all possible redirects. Defaults to `0`.
     -   `redirectMethod`: The method to change to when performing `301` and `302` redirects. Note that `payload` is not forwarded if set to `GET` or `HEAD`. Defaults to using `method`.

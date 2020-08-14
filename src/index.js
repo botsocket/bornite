@@ -55,7 +55,7 @@ internals.Radar = class {
         Dust.assert(typeof settings.method === 'string', 'Option method must be a string');
         Dust.assert(settings.baseUrl === undefined || typeof settings.baseUrl === 'string', 'Option baseUrl must be a string');
         Dust.assert(!['GET', 'HEAD'].includes(settings.method.toUpperCase()) || settings.payload === undefined, 'Option payload cannot be provided when method is GET or HEAD');
-        Dust.assert(settings.payload === undefined || typeof settings.payload === 'object' || typeof settings.payload === 'string', 'Option payload must be a string, a buffer, a stream or a serializable object');
+        Dust.assert(settings.payload === undefined || typeof settings.payload === 'object' || typeof settings.payload === 'string', 'Option payload must be a string, a buffer, a stream, URLSearchParams or a serializable object');
         Dust.assert(settings.agent === undefined || typeof settings.agent === 'object', 'Option agent must be an object');
         Dust.assert(settings.redirects === undefined || typeof settings.redirects === 'number' || settings.redirects === false, 'Option redirects must be false or a number');
         Dust.assert(settings.redirectMethod === undefined || typeof settings.redirectMethod === 'string', 'Option redirectMethod must be a string');
