@@ -12,23 +12,21 @@ const internals = {
     protocolRx: /^https?:/i,
     defaults: {
         headers: {},
-        redirects: 0,           // Disable
+        redirects: 0,
         gzip: false,
-        maxBytes: 0,            // Disable
+        maxBytes: 0,
     },
 };
 
 internals.Radar = class {
     constructor(settings) {
 
-        this._settings = settings || internals.defaults;                        // Default settings
+        this._settings = settings || internals.defaults;
     }
 
-    _resolveSettings(options = {}) {
+    _applyOptions(options) {
 
-        // Construct settings object
-
-        const settings = {
+        return {
             ...this._settings,
             ...options,
             headers: {
@@ -36,8 +34,23 @@ internals.Radar = class {
                 ...options.headers,
             },
         };
+    }
 
-        // Validate settings
+    custom(options) {
+
+        Dust.assert(options !== undefined, 'Options must be provided');
+
+        const settings = this._applyOptions(options);
+        return new internals.Radar(settings);
+    }
+
+    request(url, options = {}) {
+
+        // Process parameters
+
+        Dust.assert(typeof url === 'string', 'Url must be a string');
+
+        const settings = this._applyOptions(options);
 
         Dust.assert(typeof settings.method === 'string', 'Option method must be a string');
         Dust.assert(!['GET', 'HEAD'].includes(settings.method.toUpperCase()) || settings.payload === undefined, 'Option payload cannot be provided when method is GET or HEAD');
@@ -48,23 +61,6 @@ internals.Radar = class {
         Dust.assert(settings.gzip === undefined || typeof settings.gzip === 'boolean', 'Option gzip must be a boolean');
         Dust.assert(settings.maxBytes === undefined || typeof settings.maxBytes === 'number' || settings.maxBytes === false, 'Option maxBytes must be false or a number');
         Dust.assert(settings.timeout === undefined || typeof settings.timeout === 'number', 'Option timeout must be a number');
-
-        return settings;
-    }
-
-    custom(options) {
-
-        const settings = this._resolveSettings(options);
-        return new internals.Radar(settings);
-    }
-
-    request(url, options) {
-
-        // Validate parameters
-
-        Dust.assert(typeof url === 'string', 'Url must be a string');
-
-        const settings = this._resolveSettings(options);
 
         // Normalize settings
 

@@ -35,21 +35,7 @@ describe('custom()', () => {
 
     it('should throw on incorrect parameters', () => {
 
-        expect(() => Radar.custom()).toThrow('Option method must be a string');
-        expect(() => Radar.custom({ method: 1 })).toThrow('Option method must be a string');
-        expect(() => Radar.custom({ method: 'x', payload: 1 })).toThrow('Option payload must be a string, a buffer, a stream or a serializable object');
-        expect(() => Radar.custom({ method: 'GET', payload: {} })).toThrow('Option payload cannot be provided when method is GET or HEAD');
-        expect(() => Radar.custom({ method: 'GeT', payload: {} })).toThrow('Option payload cannot be provided when method is GET or HEAD');
-        expect(() => Radar.custom({ method: 'head', payload: {} })).toThrow('Option payload cannot be provided when method is GET or HEAD');
-        expect(() => Radar.custom({ method: 'x', redirects: 'x' })).toThrow('Option redirects must be false or a number');
-        expect(() => Radar.custom({ method: 'x', redirectMethod: 1 })).toThrow('Option redirectMethod must be a string');
-        expect(() => Radar.custom({ method: 'x', gzip: 1 })).toThrow('Option gzip must be a boolean');
-        expect(() => Radar.custom({ method: 'x', maxBytes: 'x' })).toThrow('Option maxBytes must be false or a number');
-        expect(() => Radar.custom({ method: 'x', timeout: 'x' })).toThrow('Option timeout must be a number');
-
-        const custom = Radar.custom({ method: 'GET' });
-        expect(() => custom.custom()).not.toThrow();
-        expect(() => custom.custom({ payload: {} })).toThrow('Option payload cannot be provided when method is GET or HEAD');
+        expect(() => Radar.custom()).toThrow('Options must be provided');
     });
 
     it('should request from custom instance', async () => {
@@ -73,23 +59,27 @@ describe('custom()', () => {
     it('should merge headers passed via request with ones from custom instance', async () => {
 
         const custom = Radar.custom({
-            method: 'POST',
             headers: {
-                'Content-Language': 'en-GB',
+                header1: 'x',
             },
         });
 
         const server = await internals.server((request, response) => {
 
-            expect(request.method).toBe('POST');
-            expect(request.headers['content-language']).toBe('en-GB');
-            expect(request.headers['content-length']).toBe('18');
+            expect(request.method).toBe('GET');
+            expect(request.headers.header1).toBe('x');
+            expect(request.headers.header2).toBe('y');
 
             response.writeHead(200, { 'Content-Type': 'text/plain' });
-            request.pipe(response);
+            response.end(internals.defaultPayload);
         });
 
-        const response = await custom.request(internals.baseUrl, { payload: internals.defaultPayload });
+        const response = await custom.get(internals.baseUrl, {
+            headers: {
+                header2: 'y',
+            },
+        });
+
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -112,6 +102,18 @@ describe('request()', () => {
         expect(() => Radar.request('x', { method: 'x', gzip: 1 })).toThrow('Option gzip must be a boolean');
         expect(() => Radar.request('x', { method: 'x', maxBytes: 'x' })).toThrow('Option maxBytes must be false or a number');
         expect(() => Radar.request('x', { method: 'x', timeout: 'x' })).toThrow('Option timeout must be a number');
+    });
+
+    it('should validate settings from custom instance', () => {
+
+        const custom = Radar.custom({ method: 'GET' });
+        expect(() => custom.request('x', { payload: {} })).toThrow('Option payload cannot be provided when method is GET or HEAD');
+
+        const custom2 = Radar.custom({ redirects: 5 });
+        expect(() => custom2.request('x')).toThrow('Option method must be a string');
+
+        const custom3 = Radar.custom({ redirects: 'x' });
+        expect(() => custom3.get('x')).toThrow('Option redirects must be false or a number');
     });
 
     it('should perform a get request', async () => {
@@ -331,7 +333,7 @@ describe('request()', () => {
 
     it('should request to an https resource', async () => {
 
-        const response = await Radar.get('https://www.google.com');
+        const response = await Radar.get('https://www.google.com/');
 
         expect(response.payload.toLowerCase().includes('</html>')).toBe(true);
     });
@@ -454,7 +456,7 @@ describe('request()', () => {
             response.end(internals.defaultPayload);
         });
 
-        const response = await Radar.get(`http://${auth}@localhost:3000`);
+        const response = await Radar.get(`http://${auth}@localhost:3000/`);
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -472,7 +474,7 @@ describe('request()', () => {
             response.end(internals.defaultPayload);
         });
 
-        const response = await Radar.get(`http://${auth}@localhost:3000`);
+        const response = await Radar.get(`http://${auth}@localhost:3000/`);
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -927,7 +929,7 @@ describe('request()', () => {
 
             const server = await internals.server((_, response) => {
 
-                response.writeHead(301, { Location: 'https://www.google.com' });
+                response.writeHead(301, { Location: 'https://www.google.com/' });
                 response.end();
             });
 
