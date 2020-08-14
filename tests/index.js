@@ -69,6 +69,24 @@ describe('custom()', () => {
 
         server.close();
     });
+
+    it('should override settings provided to custom instance', async () => {
+
+        const custom = Radar.custom({ method: 'POST' });
+        const server = await internals.server((request, response) => {
+
+            expect(request.method).toBe('GET');
+
+            response.writeHead(200, { 'Content-Type': 'text/plain' });
+            response.end(internals.defaultPayload);
+        });
+
+        const response = await custom.get(internals.baseUrl);           // Override method
+
+        expect(response.payload).toBe(internals.defaultPayload);
+
+        server.close();
+    });
 });
 
 describe('request()', () => {
@@ -94,11 +112,14 @@ describe('request()', () => {
         const custom = Radar.custom({ method: 'GET' });
         expect(() => custom.request('x', { payload: {} })).toThrow('Option payload cannot be provided when method is GET or HEAD');
 
-        const custom2 = Radar.custom({ redirects: 5 });
-        expect(() => custom2.request('x')).toThrow('Option method must be a string');
+        const custom2 = Radar.custom({ method: 'POST' });
+        expect(() => custom2.request('x', { method: 'GET', payload: {} })).toThrow('Option payload cannot be provided when method is GET or HEAD');
 
-        const custom3 = Radar.custom({ redirects: 'x' });
-        expect(() => custom3.get('x')).toThrow('Option redirects must be false or a number');
+        const custom3 = Radar.custom({ redirects: 5 });
+        expect(() => custom3.request('x')).toThrow('Option method must be a string');
+
+        const custom4 = Radar.custom({ redirects: 'x' });
+        expect(() => custom4.get('x')).toThrow('Option redirects must be false or a number');
     });
 
     it('should perform a get request', async () => {
