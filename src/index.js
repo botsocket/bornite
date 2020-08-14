@@ -2,96 +2,136 @@
 
 const Http = require('http');
 const Https = require('https');
-const URL = require('url');
+const Url = require('url');
 const Stream = require('stream');
 const Zlib = require('zlib');
 
-const Lyra = require('@botbind/lyra');
 const Dust = require('@botbind/dust');
 
 const internals = {
     protocolRx: /^https?:/i,
+    defaults: {
+        headers: {},
+        redirects: 0,           // Disable
+        gzip: false,
+        maxBytes: 0,            // Disable
+    },
 };
 
-internals.schema = Lyra.obj({
-    method: Lyra.str().required(),
-    headers: Lyra.obj().default({}),
-    payload: Lyra.alt(
-        Lyra.str(),
-        Lyra.obj(),
-        Lyra.arr(),
-    )
-        .when('method', {
-            is: Lyra.str().insensitive().valid('GET', 'HEAD'),
-            then: Lyra.forbidden(),
-        })
-        .messages({ 'alternatives.any': '{#label} must be a string, a buffer, a stream or a serializable object' }),
-    agent: Lyra.obj(),
-    redirects: Lyra.num().integer().min(0).allow(Infinity, false).default(0),
-    redirectMethod: Lyra.str().default(Lyra.ref('method')),
-    gzip: Lyra.bool().default(false),
-    maxBytes: Lyra.num(),
-    timeout: Lyra.num(),
-})
-    .default()
-    .label('Options');
+internals.Radar = class {
+    constructor(settings) {
 
-exports.request = function (url, options) {
-
-    // Validate parameters
-
-    Dust.assert(typeof url === 'string', 'URL must be a string');
-
-    const settings = internals.schema.attempt(options);
-
-    // Normalize settings
-
-    settings.headers = internals.normalizeHeaders(settings.headers);
-    settings.method = settings.method.toUpperCase();
-    settings.redirectMethod = settings.redirectMethod.toUpperCase();
-
-    // Normalize payload and headers
-
-    if (settings.gzip &&
-        !settings.headers['accept-encoding']) {
-
-        settings.headers['accept-encoding'] = 'gzip';
+        this._settings = settings || internals.defaults;                        // Default settings
     }
 
-    if (typeof settings.payload === 'object' &&
-        settings.payload instanceof Stream === false &&
-        !Buffer.isBuffer(settings.payload)) {
+    _resolveSettings(options = {}) {
 
-        settings.payload = JSON.stringify(settings.payload);
+        // Construct settings object
 
-        if (!settings.headers['content-type']) {
-            settings.headers['content-type'] = 'application/json';
+        const settings = {
+            ...this._settings,
+            ...options,
+            headers: {
+                ...this._settings.headers,
+                ...options.headers,
+            },
+        };
+
+        // Validate settings
+
+        Dust.assert(typeof settings.method === 'string', 'Option method must be a string');
+        Dust.assert(!['GET', 'HEAD'].includes(settings.method.toUpperCase()) || settings.payload === undefined, 'Option payload cannot be provided when method is GET or HEAD');
+        Dust.assert(settings.payload === undefined || typeof settings.payload === 'object' || typeof settings.payload === 'string', 'Option payload must be a string, a buffer, a stream or a serializable object');
+        Dust.assert(settings.agent === undefined || typeof settings.agent === 'object', 'Option agent must be an object');
+        Dust.assert(settings.redirects === undefined || typeof settings.redirects === 'number' || settings.redirects === false, 'Option redirects must be false or a number');
+        Dust.assert(settings.redirectMethod === undefined || typeof settings.redirectMethod === 'string', 'Option redirectMethod must be a string');
+        Dust.assert(settings.gzip === undefined || typeof settings.gzip === 'boolean', 'Option gzip must be a boolean');
+        Dust.assert(settings.maxBytes === undefined || typeof settings.maxBytes === 'number' || settings.maxBytes === false, 'Option maxBytes must be false or a number');
+        Dust.assert(settings.timeout === undefined || typeof settings.timeout === 'number', 'Option timeout must be a number');
+
+        return settings;
+    }
+
+    custom(options) {
+
+        const settings = this._resolveSettings(options);
+        return new internals.Radar(settings);
+    }
+
+    request(url, options) {
+
+        // Validate parameters
+
+        Dust.assert(typeof url === 'string', 'Url must be a string');
+
+        const settings = this._resolveSettings(options);
+
+        // Normalize settings
+
+        settings.headers = internals.normalizeHeaders(settings.headers);
+        settings.method = settings.method.toUpperCase();
+        settings.redirectMethod = settings.redirectMethod ? settings.redirectMethod.toUpperCase() : settings.method;
+
+        // Normalize payload and headers
+
+        if (settings.gzip &&
+            !settings.headers['accept-encoding']) {
+
+            settings.headers['accept-encoding'] = 'gzip';
         }
-    }
 
-    const isBuffer = Buffer.isBuffer(settings.payload);
-    if ((typeof settings.payload === 'string' || isBuffer) &&
-        !settings.headers['content-length']) {
+        if (typeof settings.payload === 'object' &&
+            settings.payload instanceof Stream === false &&
+            !Buffer.isBuffer(settings.payload)) {
 
-        settings.headers['content-length'] = isBuffer
-            ? settings.payload.length
-            : Buffer.byteLength(settings.payload);
-    }
+            settings.payload = JSON.stringify(settings.payload);
 
-    // Request
-
-    return new Promise((resolve, reject) => {
-
-        internals.request(url, settings, (error, response) => {
-
-            if (error) {
-                return reject(error);
+            if (!settings.headers['content-type']) {
+                settings.headers['content-type'] = 'application/json';
             }
+        }
 
-            return resolve(response);
+        const isBuffer = Buffer.isBuffer(settings.payload);
+        if ((typeof settings.payload === 'string' || isBuffer) &&
+            !settings.headers['content-length']) {
+
+            settings.headers['content-length'] = isBuffer
+                ? settings.payload.length
+                : Buffer.byteLength(settings.payload);
+        }
+
+
+        // Request
+
+        return new Promise((resolve, reject) => {
+
+            internals.request(url, settings, (error, response) => {
+
+                if (error) {
+                    return reject(error);
+                }
+
+                return resolve(response);
+            });
         });
-    });
+    }
 };
+
+internals.shortcut = function () {
+
+    for (const shortcut of ['get', 'post', 'put', 'patch', 'delete']) {
+        internals.Radar.prototype[shortcut] = function (url, options = {}) {
+
+            Dust.assert(!options.method, 'Option method is not allowed');
+
+            return this.request(url, { ...options, method: shortcut.toUpperCase() });
+        };
+    }
+};
+
+internals.shortcut();
+
+module.exports = new internals.Radar();
 
 internals.normalizeHeaders = function (headers) {
 
@@ -107,7 +147,7 @@ internals.request = function (url, settings, callback) {
 
     // Parse url
 
-    const parsedUrl = new URL.URL(url);
+    const parsedUrl = new Url.URL(url);
 
     // Construct request options
 
@@ -175,7 +215,7 @@ internals.request = function (url, settings, callback) {
         // Process location
 
         if (!internals.protocolRx.test(location)) {
-            location = URL.resolve(parsedUrl.href, location);
+            location = Url.resolve(parsedUrl.href, location);
         }
 
         // Modify settings
@@ -335,17 +375,3 @@ internals.Reader = class extends Stream.Writable {
         return Buffer.concat(this.buffers, this.length).toString();
     }
 };
-
-internals.shortcut = function () {
-
-    for (const shortcut of ['get', 'post', 'put', 'patch', 'delete']) {
-        exports[shortcut] = function (url, options = {}) {
-
-            Dust.assert(!options.method, 'Option method is not allowed');
-
-            return exports.request(url, { ...options, method: shortcut.toUpperCase() });
-        };
-    }
-};
-
-internals.shortcut();
