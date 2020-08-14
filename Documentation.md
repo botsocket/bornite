@@ -64,6 +64,7 @@ Radar.get('https://www.google.com')
 
 ## API
 
+-   [`custom()`](#customoptions)
 -   [`request()`](#requesturl-options)
     -   [`response.payload`](#responsepayload)
     -   [`response.headers`](#responseheaders)
@@ -72,6 +73,26 @@ Radar.get('https://www.google.com')
     -   [`response.raw`](#responseraw)
 -   [Shortcut](#shortcut)
 
+### `custom(options)`
+
+Creates a custom Radar instance with common options where:
+
+-   `options`: Common options that apply to every request. Same as ones passed to [`request()`](#requesturl-options).
+
+```js
+const custom = Radar.custom({
+    baseUrl: 'https://www.google.com',
+    redirects: Infinity,
+    gzip: true,
+    headers: {
+        'Some-Common-Header': 'abc',
+    },
+});
+
+custom.get('/images');
+custom.post('/gmail');
+```
+
 ### `request(url, [options])`
 
 Makes a request where:
@@ -79,7 +100,8 @@ Makes a request where:
 -   `url`: The URL to send the request.
 -   `options`: Optional options where:
     -  `method`: The request method to use. Case-insensitive.
-    -  `headers`: A hash of case-insensitive header names and their values. `Content-Length`, `Content-Type` and `Accept-Encoding` are set by default.
+    -  `baseUrl`: Base URL that is resolved with `url` to form a full URL. Most useful when used with [`custom()`](#customoptions).
+    -  `headers`: A hash of case-insensitive header names and their values. `Content-Length`, `Content-Type` and `Accept-Encoding` are set by default if possible.
     -  `payload`: The request payload. Can be a string, a buffer, a stream or a serializable object. If `method` is `GET` or `HEAD`, this key is forbidden.
     -  `agent`: The HTTP Agent passed directly to `Http.request()`.
     -  `redirects`: The number of redirects to follow. Set to `0` or `false` to disable redirection. Set to `Infinity` to follow all possible redirects. Defaults to `0`.
@@ -89,8 +111,9 @@ Makes a request where:
     -   `timeout`: Socket timeout in milliseconds. Passed directly to `Http.request()`.
 
 ```js
-const response = await Radar.request('https://www.gooogle.com', {
+const response = await Radar.request('/images', {
     method: 'POST',
+    baseUrl: 'https://www.google.com',
     headers: {},
     payload: { a: 1 },
     agent: new Http.Agent({ maxSockets: 1 }),
@@ -99,7 +122,7 @@ const response = await Radar.request('https://www.gooogle.com', {
     gzip: true,
     maxBytes: 5000,
     timeout: 2000,
-});
+}); // Requests to https://www.google.com/images
 ```
 
 [Back to top](#api)
