@@ -40,25 +40,8 @@ describe('custom()', () => {
 
     it('should request from custom instance', async () => {
 
-        const custom = Radar.custom({ method: 'POST' });
-        const server = await internals.server((request, response) => {
-
-            expect(request.method).toBe('POST');
-            expect(request.headers['content-length']).toBe('18');
-
-            response.writeHead(200, { 'Content-Type': 'text/plain' });
-            request.pipe(response);
-        });
-
-        const response = await custom.request(internals.baseUrl, { payload: internals.defaultPayload });
-        expect(response.payload).toBe(internals.defaultPayload);
-
-        server.close();
-    });
-
-    it('should merge headers passed via request with ones from custom instance', async () => {
-
         const custom = Radar.custom({
+            method: 'POST',
             headers: {
                 header1: 'x',
             },
@@ -66,15 +49,17 @@ describe('custom()', () => {
 
         const server = await internals.server((request, response) => {
 
-            expect(request.method).toBe('GET');
+            expect(request.method).toBe('POST');
             expect(request.headers.header1).toBe('x');
             expect(request.headers.header2).toBe('y');
+            expect(request.headers['content-length']).toBe('18');
 
             response.writeHead(200, { 'Content-Type': 'text/plain' });
-            response.end(internals.defaultPayload);
+            request.pipe(response);
         });
 
-        const response = await custom.get(internals.baseUrl, {
+        const response = await custom.request(internals.baseUrl, {
+            payload: internals.defaultPayload,
             headers: {
                 header2: 'y',
             },
