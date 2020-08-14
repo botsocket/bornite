@@ -65,16 +65,20 @@ internals.Radar = class {
 
         // Normalize settings
 
-        settings.headers = internals.normalizeHeaders(settings.headers);
         settings.method = settings.method.toUpperCase();
         settings.redirectMethod = settings.redirectMethod ? settings.redirectMethod.toUpperCase() : settings.method;
 
-        // Normalize payload and headers
+        // Normalize headers and payloads
 
-        if (settings.gzip &&
-            !settings.headers['accept-encoding']) {
+        const headers = new internals.Headers(settings.headers);
 
-            settings.headers['accept-encoding'] = 'gzip';
+        if (settings.gzip) {
+            headers.set('accept-encoding', 'gzip');
+        }
+
+        if (settings.payload instanceof Url.URLSearchParams) {
+            settings.payload = settings.payload.toString();
+            headers.set('content-type', 'application/x-www-form-urlencoded');
         }
 
         if (typeof settings.payload === 'object' &&
@@ -82,21 +86,19 @@ internals.Radar = class {
             !Buffer.isBuffer(settings.payload)) {
 
             settings.payload = JSON.stringify(settings.payload);
-
-            if (!settings.headers['content-type']) {
-                settings.headers['content-type'] = 'application/json';
-            }
+            headers.set('content-type', 'application/json');
         }
+
+        // Calculate Content-Length
 
         const isBuffer = Buffer.isBuffer(settings.payload);
-        if ((typeof settings.payload === 'string' || isBuffer) &&
-            !settings.headers['content-length']) {
+        if (typeof settings.payload === 'string' || isBuffer) {
 
-            settings.headers['content-length'] = isBuffer
-                ? settings.payload.length
-                : Buffer.byteLength(settings.payload);
+            const length = isBuffer ? settings.payload.length : Buffer.byteLength(settings.payload);
+            headers.set('content-length', length);
         }
 
+        settings.headers = headers.normalized;          // Convert internal Header class to normal headers object
 
         // Request
 
@@ -130,14 +132,23 @@ internals.shortcut();
 
 module.exports = new internals.Radar();
 
-internals.normalizeHeaders = function (headers) {
+internals.Headers = class {
+    constructor(headers) {
 
-    const normalized = {};
-    for (const key of Object.keys(headers)) {
-        normalized[key.toLowerCase()] = headers[key];
+        const normalized = {};
+        for (const key of Object.keys(headers)) {
+            normalized[key.toLowerCase()] = headers[key];
+        }
+
+        this.normalized = normalized;
     }
 
-    return normalized;
+    set(name, value) {
+
+        if (!this.normalized[name]) {
+            this.normalized[name] = value;
+        }
+    }
 };
 
 internals.request = function (url, settings, callback) {

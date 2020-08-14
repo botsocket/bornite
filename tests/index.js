@@ -3,6 +3,7 @@
 const Http = require('http');
 const Zlib = require('zlib');
 const Stream = require('stream');
+const Url = require('url');
 
 const Dust = require('@botbind/dust');
 
@@ -18,6 +19,7 @@ const internals = {
             d: 1,
         },
     },
+    searchParamsPayload: new Url.URLSearchParams({ a: 1, b: 'x' }),
 };
 
 internals.longPayload = new Array(100).join(internals.defaultPayload);
@@ -249,6 +251,23 @@ describe('request()', () => {
         server.close();
     });
 
+    it('should perform a post request with URLSearchParams', async () => {
+
+        const server = await internals.server((request, response) => {
+
+            expect(request.headers['content-type']).toBe('application/x-www-form-urlencoded');
+            expect(request.headers['content-length']).toBe('7');
+
+            response.writeHead(200, { 'Content-Type': 'text/plain' });
+            request.pipe(response);
+        });
+
+        const response = await Radar.post(internals.baseUrl, { payload: internals.searchParamsPayload });
+        expect(response.payload).toBe(internals.searchParamsPayload.toString());
+
+        server.close();
+    });
+
     it('should perform a post request with custom content-type', async () => {
 
         const contentType = 'application/json-patch+json';
@@ -291,30 +310,6 @@ describe('request()', () => {
         });
 
         expect(response.payload).toBe(internals.defaultPayload);
-
-        server.close();
-    });
-
-    it('should not override content-type if provided but lowercased', async () => {
-
-        const contentType = 'application/json-patch+json';
-        const server = await internals.server((request, response) => {
-
-            expect(request.headers['content-type']).toBe(contentType);
-
-            response.writeHead(200, { 'Content-Type': 'application/json' });
-            request.pipe(response);
-        });
-
-        const payload = [{ op: 'remove', path: '/test' }];
-        const response = await Radar.post(internals.baseUrl, {
-            payload,
-            headers: {
-                'content-type': contentType,
-            },
-        });
-
-        expect(Dust.equal(response.payload, payload)).toBe(true);
 
         server.close();
     });
