@@ -18,7 +18,7 @@ declare namespace internals {
          * @param url - The URL to send the request.
          * @param options - Optional options.
          */
-        request<T>(url: string, options?: Radar.Options): Promise<Radar.Response<T>>;
+        request<T extends string | object>(url: string, options?: Radar.Options): Promise<Radar.Response<T>>;
 
         /**
          * Performs a HTTP GET request
@@ -26,7 +26,7 @@ declare namespace internals {
          * @param url - The URL to send the request.
          * @param options - Optional options.
          */
-        get<T>(url: string, options?: Omit<Radar.Options, 'method'>): Promise<Radar.Response<T>>
+        get<T extends string | object>(url: string, options?: Omit<Radar.Options, 'method'>): Promise<Radar.Response<T>>
 
         /**
          * Performs a HTTP POST request
@@ -34,7 +34,7 @@ declare namespace internals {
          * @param url - The URL to send the request.
          * @param options - Optional options.
          */
-        post<T>(url: string, options?: Omit<Radar.Options, 'method'>): Promise<Radar.Response<T>>
+        post<T extends string | object>(url: string, options?: Omit<Radar.Options, 'method'>): Promise<Radar.Response<T>>
 
         /**
          * Performs a HTTP PUT request
@@ -42,7 +42,7 @@ declare namespace internals {
          * @param url - The URL to send the request.
          * @param options - Optional options.
          */
-        put<T>(url: string, options?: Omit<Radar.Options, 'method'>): Promise<Radar.Response<T>>
+        put<T extends string | object>(url: string, options?: Omit<Radar.Options, 'method'>): Promise<Radar.Response<T>>
 
         /**
          * Performs a HTTP PATCH request
@@ -50,7 +50,7 @@ declare namespace internals {
          * @param url - The URL to send the request.
          * @param options - Optional options.
          */
-        patch<T>(url: string, options?: Omit<Radar.Options, 'method'>): Promise<Radar.Response<T>>
+        patch<T extends string | object>(url: string, options?: Omit<Radar.Options, 'method'>): Promise<Radar.Response<T>>
 
         /**
          * Performs a HTTP DELETE request
@@ -58,7 +58,7 @@ declare namespace internals {
          * @param url - The URL to send the request.
          * @param options - Optional options.
          */
-        delete<T>(url: string, options?: Omit<Radar.Options, 'method'>): Promise<Radar.Response<T>>
+        delete<T extends string | object>(url: string, options?: Omit<Radar.Options, 'method'>): Promise<Radar.Response<T>>
     }
 }
 
