@@ -92,7 +92,8 @@ internals.Radar = class {
         // Calculate Content-Length
 
         const isBuffer = Buffer.isBuffer(settings.payload);
-        if (typeof settings.payload === 'string' || isBuffer) {
+        if (typeof settings.payload === 'string' ||
+            isBuffer) {
 
             const length = isBuffer ? settings.payload.length : Buffer.byteLength(settings.payload);
             headers.set('content-length', length);
