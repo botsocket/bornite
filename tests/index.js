@@ -638,10 +638,44 @@ describe('request()', () => {
         server.close();
     });
 
-    it('should resolve urls when url host is different from baseUrl', async () => {
+    it('should ignore baseUrl when path is a full url', async () => {
 
         const response = await Radar.get('https://www.google.com/', { baseUrl: internals.baseUrl });
         expect(response.payload.toLowerCase().includes('</html>')).toBe(true);
+    });
+
+    it('should append paths to baseUrl', async () => {
+
+        const server = await internals.server((request, response) => {
+
+            expect(request.method).toBe('GET');
+            expect(request.url).toBe('/test/test2/test3/test4');
+
+            response.writeHead(200, { 'Content-Type': 'text/plain' });
+            response.end(internals.defaultPayload);
+        });
+
+        const response = await Radar.get('/test3/test4', { baseUrl: internals.baseUrl + 'test/test2/' });
+        expect(response.payload).toBe(internals.defaultPayload);
+
+        server.close();
+    });
+
+    it('should append paths to baseUrl without leading and trailing "/"', async () => {
+
+        const server = await internals.server((request, response) => {
+
+            expect(request.method).toBe('GET');
+            expect(request.url).toBe('/test/test2/test3/test4');
+
+            response.writeHead(200, { 'Content-Type': 'text/plain' });
+            response.end(internals.defaultPayload);
+        });
+
+        const response = await Radar.get('test3/test4', { baseUrl: internals.baseUrl + 'test/test2' });
+        expect(response.payload).toBe(internals.defaultPayload);
+
+        server.close();
     });
 
     describe('Redirects', () => {

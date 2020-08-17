@@ -10,6 +10,7 @@ const Dust = require('@botbind/dust');
 
 const internals = {
     protocolRx: /^https?:/i,
+    absoluteUrlRx: /^([a-z][a-z\d\+\-\.]*:)?\/\//i,             // Copied from axios
     defaults: {
         headers: {},
         redirects: 0,
@@ -156,7 +157,8 @@ internals.request = function (url, settings, callback) {
 
     // Parse url
 
-    const parsedUrl = new Url.URL(url, settings.baseUrl);
+    const fullUrl = internals.joinUrl(url, settings.baseUrl);
+    const parsedUrl = new Url.URL(fullUrl);
 
     // Construct request options
 
@@ -260,6 +262,15 @@ internals.request = function (url, settings, callback) {
     }
 
     request.end();
+};
+
+internals.joinUrl = function (path, base) {
+
+    if (internals.absoluteUrlRx.test(path)) {
+        return path;
+    }
+
+    return base.replace(/\/+$/, '') + '/' + path.replace(/^\/+/, '');
 };
 
 internals.redirectMethod = function (code, method, settings) {
