@@ -681,7 +681,7 @@ describe('request()', () => {
 
             const server = await internals.server((_, response) => {
 
-                response.writeHead(301, { Location: '/' });
+                response.writeHead(301, { Location: '/test' });
                 response.end();
             });
 
@@ -694,7 +694,7 @@ describe('request()', () => {
 
             const server = await internals.server((_, response) => {
 
-                response.writeHead(301, { Location: '/' });
+                response.writeHead(301, { Location: '/test' });
                 response.end();
             });
 
@@ -707,7 +707,7 @@ describe('request()', () => {
 
             const server = await internals.server((_, response) => {
 
-                response.writeHead(301, { Location: '/' });
+                response.writeHead(301, { Location: '/test' });
                 response.end();
             });
 
@@ -724,13 +724,13 @@ describe('request()', () => {
             const server = await internals.server((request, response) => {
 
                 if (count < 3) {
-                    response.writeHead(301, { Location: '/' });
+                    response.writeHead(301, { Location: '/test' });
                     response.end();
                     count++;
                     return;
                 }
 
-                expect(request.url).toBe('/');
+                expect(request.url).toBe('/test');
                 expect(request.method).toBe('POST');
                 expect(request.headers['content-length']).toBe('18');
 
@@ -750,7 +750,7 @@ describe('request()', () => {
             const server = await internals.server((_, response) => {
 
                 if (count < 2) {
-                    response.writeHead(301, { Location: '/' });
+                    response.writeHead(301, { Location: '/test' });
                     response.end();
                     count++;
                 }
@@ -780,13 +780,13 @@ describe('request()', () => {
             const server = await internals.server((request, response) => {
 
                 if (!redirected) {
-                    response.writeHead(301, { Location: '/' });
+                    response.writeHead(301, { Location: '/test' });
                     response.end();
                     redirected = true;
                     return;
                 }
 
-                expect(request.url).toBe('/');
+                expect(request.url).toBe('/test');
                 expect(request.method).toBe('POST');
 
                 response.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -805,13 +805,13 @@ describe('request()', () => {
             const server = await internals.server(async (request, response) => {
 
                 if (!redirected) {
-                    response.writeHead(302, { Location: '/' });
+                    response.writeHead(302, { Location: '/test' });
                     response.end();
                     redirected = true;
                     return;
                 }
 
-                expect(request.url).toBe('/');
+                expect(request.url).toBe('/test');
                 expect(request.headers['content-type']).toBe(undefined);
                 expect(request.headers['content-length']).toBe(undefined);
 
@@ -839,13 +839,13 @@ describe('request()', () => {
             const server = await internals.server(async (request, response) => {
 
                 if (!redirected) {
-                    response.writeHead(303, { Location: '/' });
+                    response.writeHead(303, { Location: '/test' });
                     response.end();
                     redirected = true;
                     return;
                 }
 
-                expect(request.url).toBe('/');
+                expect(request.url).toBe('/test');
                 expect(request.headers['content-type']).toBe(undefined);
                 expect(request.headers['content-length']).toBe(undefined);
 
@@ -872,13 +872,13 @@ describe('request()', () => {
             const server = await internals.server((request, response) => {
 
                 if (!redirected) {
-                    response.writeHead(307, { Location: '/' });
+                    response.writeHead(307, { Location: '/test' });
                     response.end();
                     redirected = true;
                     return;
                 }
 
-                expect(request.url).toBe('/');
+                expect(request.url).toBe('/test');
                 expect(request.method).toBe('POST');
                 expect(request.headers['content-length']).toBe('18');
 
@@ -903,13 +903,13 @@ describe('request()', () => {
             const server = await internals.server((request, response) => {
 
                 if (!redirected) {
-                    response.writeHead(308, { Location: '/' });
+                    response.writeHead(308, { Location: '/test' });
                     response.end();
                     redirected = true;
                     return;
                 }
 
-                expect(request.url).toBe('/');
+                expect(request.url).toBe('/test');
                 expect(request.method).toBe('POST');
                 expect(request.headers['content-length']).toBe('18');
 

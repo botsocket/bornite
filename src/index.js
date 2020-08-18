@@ -9,8 +9,7 @@ const Zlib = require('zlib');
 const Dust = require('@botbind/dust');
 
 const internals = {
-    protocolRx: /^https?:/i,
-    absoluteUrlRx: /^([a-z][a-z\d\+\-\.]*:)?\/\//i,             // Copied from axios
+    protocolRx: /^https?:\/\//i,
     defaults: {
         headers: {},
         redirects: 0,
@@ -225,9 +224,7 @@ internals.request = function (url, settings, callback) {
 
         // Process location
 
-        if (!internals.protocolRx.test(location)) {
-            location = Url.resolve(parsedUrl.href, location);
-        }
+        location = internals.joinUrl(location, parsedUrl.origin);
 
         // Modify settings
 
@@ -266,7 +263,7 @@ internals.request = function (url, settings, callback) {
 
 internals.joinUrl = function (path, base) {
 
-    if (internals.absoluteUrlRx.test(path)) {
+    if (internals.protocolRx.test(path)) {
         return path;
     }
 
