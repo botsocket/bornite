@@ -203,8 +203,7 @@ internals.request = function (url, settings, callback) {
         const redirectMethod = internals.redirectMethod(response.statusCode, options.method, settings);
 
         if (!redirectMethod) {
-            internals.read(response, settings, finalize);
-            return;
+            return internals.read(response, settings, finalize);
         }
 
         // Redirect
@@ -212,14 +211,12 @@ internals.request = function (url, settings, callback) {
         response.destroy();
 
         if (!settings.redirects) {
-            finalize(new Error('Maximum redirects reached'));
-            return;
+            return finalize(new Error('Maximum redirects reached'));
         }
 
         let location = response.headers.location;
         if (!location) {
-            finalize(new Error('Redirect without location'));
-            return;
+            return finalize(new Error('Redirect without location'));
         }
 
         // Process location
@@ -237,8 +234,7 @@ internals.request = function (url, settings, callback) {
         }
 
         if (settings.payload instanceof Stream) {
-            finalize(new Error('Cannot follow redirects with stream payloads'));
-            return;
+            return finalize(new Error('Cannot follow redirects with stream payloads'));
         }
 
         settings.method = redirectMethod;
@@ -310,8 +306,7 @@ internals.read = function (response, settings, callback) {
                 payload = JSON.parse(payload);
             }
             catch (error) {
-                finalize(new Error(`Failed to parse JSON: ${error.message}`));
-                return;
+                return finalize(new Error(`Failed to parse JSON: ${error.message}`));
             }
         }
 
@@ -379,8 +374,7 @@ internals.Reader = class extends Stream.Writable {
         if (this.maxBytes &&
             this.length > this.maxBytes) {
 
-            this.emit('error', new Error('Maximum payload size reached'));
-            return;
+            return this.emit('error', new Error('Maximum payload size reached'));
         }
 
         this.buffers.push(chunk);
