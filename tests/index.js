@@ -10,7 +10,7 @@ const Dust = require('@botbind/dust');
 const Radar = require('../src');
 
 const internals = {
-    baseUrl: 'http://localhost:3000/',
+    baseUrl: 'http://localhost:3000',
     defaultPayload: 'Some random string',
     jsonPayload: {
         a: 1,
@@ -43,7 +43,7 @@ describe('custom()', () => {
     it('should request from custom instance', async () => {
 
         const custom = Radar.custom({
-            baseUrl: internals.baseUrl + 'test/test2/',
+            baseUrl: internals.baseUrl + '/test/test2',
             method: 'POST',
             headers: {
                 header1: 'x',
@@ -336,7 +336,7 @@ describe('request()', () => {
 
     it('should request to an https resource', async () => {
 
-        const response = await Radar.get('https://www.google.com/');
+        const response = await Radar.get('https://www.google.com');
 
         expect(response.payload.toLowerCase().includes('</html>')).toBe(true);
     });
@@ -639,7 +639,7 @@ describe('request()', () => {
 
     it('should ignore baseUrl when path is absolute', async () => {
 
-        const response = await Radar.get('https://www.google.com/', { baseUrl: internals.baseUrl });
+        const response = await Radar.get('https://www.google.com', { baseUrl: internals.baseUrl });
         expect(response.payload.toLowerCase().includes('</html>')).toBe(true);
     });
 
@@ -653,13 +653,13 @@ describe('request()', () => {
             response.end(internals.defaultPayload);
         });
 
-        const response = await Radar.get('/test3/test4', { baseUrl: internals.baseUrl + 'test/test2/' });
+        const response = await Radar.get('/test3/test4', { baseUrl: internals.baseUrl + '/test/test2' });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
     });
 
-    it('should append paths to baseUrl without leading and trailing "/"', async () => {
+    it('should append paths to baseUrl with trailing "/"', async () => {
 
         const server = await internals.server((request, response) => {
 
@@ -669,7 +669,7 @@ describe('request()', () => {
             response.end(internals.defaultPayload);
         });
 
-        const response = await Radar.get('test3/test4', { baseUrl: internals.baseUrl + 'test/test2' });
+        const response = await Radar.get('test3/test4', { baseUrl: internals.baseUrl + '/test/test2/' });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -934,13 +934,13 @@ describe('request()', () => {
             const server = await internals.server((request, response) => {
 
                 if (!redirected) {
-                    response.writeHead(301, { Location: internals.baseUrl });
+                    response.writeHead(301, { Location: internals.baseUrl + '/test' });
                     response.end();
                     redirected = true;
                     return;
                 }
 
-                expect(request.url).toBe('/');
+                expect(request.url).toBe('/test');
                 expect(request.headers['content-length']).toBe('18');
 
                 response.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -959,13 +959,13 @@ describe('request()', () => {
             const server = await internals.server((request, response) => {
 
                 if (!redirected) {
-                    response.writeHead(301, { Location: '/' });
+                    response.writeHead(301, { Location: '/test' });
                     response.end();
                     redirected = true;
                     return;
                 }
 
-                expect(request.url).toBe('/');
+                expect(request.url).toBe('/test');
                 expect(request.headers['content-length']).toBe('27');
                 expect(request.headers['content-type']).toBe('application/json');
 
@@ -983,7 +983,7 @@ describe('request()', () => {
 
             const server = await internals.server((_, response) => {
 
-                response.writeHead(301, { Location: 'https://www.google.com/' });
+                response.writeHead(301, { Location: 'https://www.google.com' });
                 response.end();
             });
 
