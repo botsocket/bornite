@@ -43,7 +43,7 @@ describe('custom()', () => {
     it('should request from custom instance', async () => {
 
         const custom = Radar.custom({
-            baseUrl: internals.baseUrl,
+            baseUrl: internals.baseUrl + 'test/test2/',
             method: 'POST',
             headers: {
                 header1: 'x',
@@ -53,7 +53,7 @@ describe('custom()', () => {
         const server = await internals.server((request, response) => {
 
             expect(request.method).toBe('POST');
-            expect(request.url).toBe('/test');
+            expect(request.url).toBe('/test/test2/test3/test4');
             expect(request.headers.header1).toBe('x');
             expect(request.headers.header2).toBe('y');
             expect(request.headers['content-length']).toBe('18');
@@ -62,7 +62,7 @@ describe('custom()', () => {
             request.pipe(response);
         });
 
-        const response = await custom.request('/test', {
+        const response = await custom.request('/test3/test4', {
             payload: internals.defaultPayload,
             headers: {
                 header2: 'y',
@@ -625,7 +625,6 @@ describe('request()', () => {
 
         const server = await internals.server((request, response) => {
 
-            expect(request.method).toBe('GET');
             expect(request.url).toBe('/test');
 
             response.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -638,7 +637,7 @@ describe('request()', () => {
         server.close();
     });
 
-    it('should ignore baseUrl when path is a full url', async () => {
+    it('should ignore baseUrl when path is absolute', async () => {
 
         const response = await Radar.get('https://www.google.com/', { baseUrl: internals.baseUrl });
         expect(response.payload.toLowerCase().includes('</html>')).toBe(true);
@@ -648,7 +647,6 @@ describe('request()', () => {
 
         const server = await internals.server((request, response) => {
 
-            expect(request.method).toBe('GET');
             expect(request.url).toBe('/test/test2/test3/test4');
 
             response.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -665,7 +663,6 @@ describe('request()', () => {
 
         const server = await internals.server((request, response) => {
 
-            expect(request.method).toBe('GET');
             expect(request.url).toBe('/test/test2/test3/test4');
 
             response.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -815,7 +812,6 @@ describe('request()', () => {
                 }
 
                 expect(request.url).toBe('/');
-                expect(request.method).toBe('GET');
                 expect(request.headers['content-type']).toBe(undefined);
                 expect(request.headers['content-length']).toBe(undefined);
 
@@ -850,7 +846,6 @@ describe('request()', () => {
                 }
 
                 expect(request.url).toBe('/');
-                expect(request.method).toBe('GET');
                 expect(request.headers['content-type']).toBe(undefined);
                 expect(request.headers['content-length']).toBe(undefined);
 
@@ -971,7 +966,6 @@ describe('request()', () => {
                 }
 
                 expect(request.url).toBe('/');
-                expect(request.method).toBe('POST');
                 expect(request.headers['content-length']).toBe('27');
                 expect(request.headers['content-type']).toBe('application/json');
 
