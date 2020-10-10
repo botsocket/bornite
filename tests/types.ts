@@ -3,11 +3,11 @@ import Https = require('https');
 import Stream = require('stream');
 import Url = require('url');
 
-import Radar = require('../src');
+import Bornite = require('../src');
 
 // custom()
 
-const custom = Radar.custom({
+const custom = Bornite.custom({
     method: 'test',
     baseUrl: 'test',
     headers: {
@@ -46,7 +46,7 @@ custom2.request('test');
 
 // request()
 
-Radar.request('test', { method: 'test' }).then((response) => {
+Bornite.request('test', { method: 'test' }).then((response) => {
 
     response.headers['accept-language'];
     response.payload;
@@ -55,7 +55,7 @@ Radar.request('test', { method: 'test' }).then((response) => {
     response.statusMessage;
 });
 
-Radar.request<{ a: string }>('test', { method: 'test' }).then((response) => {
+Bornite.request<{ a: string }>('test', { method: 'test' }).then((response) => {
 
     if (response.payload) {
         response.payload.a;
@@ -64,7 +64,7 @@ Radar.request<{ a: string }>('test', { method: 'test' }).then((response) => {
 
 // get()
 
-Radar.get('test').then((response) => {
+Bornite.get('test').then((response) => {
 
     response.headers['accept-language'];
     response.payload;
@@ -73,7 +73,7 @@ Radar.get('test').then((response) => {
     response.statusMessage;
 });
 
-Radar.get<{ a: string }>('test').then((response) => {
+Bornite.get<{ a: string }>('test').then((response) => {
 
     if (response.payload) {
         response.payload.a;
@@ -82,7 +82,7 @@ Radar.get<{ a: string }>('test').then((response) => {
 
 // post()
 
-Radar.post('test').then((response) => {
+Bornite.post('test').then((response) => {
 
     response.headers['accept-language'];
     response.payload;
@@ -91,7 +91,7 @@ Radar.post('test').then((response) => {
     response.statusMessage;
 });
 
-Radar.post<{ a: string }>('test').then((response) => {
+Bornite.post<{ a: string }>('test').then((response) => {
 
     if (response.payload) {
         response.payload.a;
@@ -100,7 +100,7 @@ Radar.post<{ a: string }>('test').then((response) => {
 
 // put()
 
-Radar.put('test').then((response) => {
+Bornite.put('test').then((response) => {
 
     response.headers['accept-language'];
     response.payload;
@@ -109,7 +109,7 @@ Radar.put('test').then((response) => {
     response.statusMessage;
 });
 
-Radar.put<{ a: string }>('test').then((response) => {
+Bornite.put<{ a: string }>('test').then((response) => {
 
     if (response.payload) {
         response.payload.a;
@@ -118,7 +118,7 @@ Radar.put<{ a: string }>('test').then((response) => {
 
 // patch()
 
-Radar.patch('test').then((response) => {
+Bornite.patch('test').then((response) => {
 
     response.headers['accept-language'];
     response.payload;
@@ -127,7 +127,7 @@ Radar.patch('test').then((response) => {
     response.statusMessage;
 });
 
-Radar.patch<{ a: string }>('test').then((response) => {
+Bornite.patch<{ a: string }>('test').then((response) => {
 
     if (response.payload) {
         response.payload.a;
@@ -136,7 +136,7 @@ Radar.patch<{ a: string }>('test').then((response) => {
 
 // delete()
 
-Radar.delete('test').then((response) => {
+Bornite.delete('test').then((response) => {
 
     response.headers['accept-language'];
     response.payload;
@@ -145,7 +145,7 @@ Radar.delete('test').then((response) => {
     response.statusMessage;
 });
 
-Radar.delete<{ a: string }>('test').then((response) => {
+Bornite.delete<{ a: string }>('test').then((response) => {
 
     if (response.payload) {
         response.payload.a;

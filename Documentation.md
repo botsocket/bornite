@@ -2,14 +2,14 @@
 
 ## Introduction
 
-Radar is a library for making HTTP requests
+Bornite is a library for making HTTP requests
 
 ## Installation
 
-Radar is available on npm:
+Bornite is available on npm:
 
 ```bash
-npm install @botbind/radar
+npm install @botsocket/bornite
 ```
 
 ## Usage
@@ -17,10 +17,10 @@ npm install @botbind/radar
 A simple GET request:
 
 ```js
-const Radar = require('@botbind/radar');
+const Bornite = require('@botsocket/bornite');
 
 const makeRequest = async function () {
-    const response = await Radar.get('https://www.google.com');
+    const response = await Bornite.get('https://www.google.com');
 
     response.payload; // <html>...
     response.statusCode; // 200
@@ -33,10 +33,10 @@ makeRequest();
 POST request with JSON payload:
 
 ```js
-const Radar = require('@botbind/radar');
+const Bornite = require('@botsocket/bornite');
 
 const makeRequest = async function () {
-    const response = await Radar.post('https://my-url.com', {
+    const response = await Bornite.post('https://my-url.com', {
         payload: {
             name: 'John Doe',
         },
@@ -52,9 +52,9 @@ makeRequest();
 With `Promise`:
 
 ```js
-const Radar = require('@botbind/radar');
+const Bornite = require('@botsocket/bornite');
 
-Radar.get('https://www.google.com')
+Bornite.get('https://www.google.com')
     .then((response) => {
         response.payload; // <html>...
         response.statusCode; // 200
@@ -75,12 +75,12 @@ Radar.get('https://www.google.com')
 
 ### `custom(options)`
 
-Creates a custom Radar instance with common options where:
+Creates a custom Bornite instance with common options where:
 
 -   `options`: Common options that apply to every request. Same as ones passed to [`request()`](#requesturl-options).
 
 ```js
-const custom = Radar.custom({
+const custom = Bornite.custom({
     baseUrl: 'https://www.google.com',
     redirects: Infinity,
     gzip: true,
@@ -111,7 +111,7 @@ Makes a request where:
     -   `timeout`: Socket timeout in milliseconds. Passed directly to `Http.request()`.
 
 ```js
-const response = await Radar.request('/images', {
+const response = await Bornite.request('/images', {
     method: 'POST',
     baseUrl: 'https://www.google.com',
     headers: {},
@@ -129,7 +129,7 @@ const response = await Radar.request('/images', {
 
 #### `response.payload`
 
-Payload returned by the server. Radar automatically parses the content if the `Content-Type` header is set to `application/json`.
+Payload returned by the server. Bornite automatically parses the content if the `Content-Type` header is set to `application/json`.
 
 [Back to top](#api)
 
@@ -159,18 +159,18 @@ The raw Node response object.
 
 ### Shortcuts
 
-Radar provides the following convenience methods for common HTTP methods:
+Bornite provides the following convenience methods for common HTTP methods:
 
 ```js
-Radar.get(url); // Equivalent to Radar.request(url, { method: 'GET' })
+Bornite.get(url); // Equivalent to Bornite.request(url, { method: 'GET' })
 
-Radar.post(url); // Equivalent to Radar.request(url, { method: 'POST' })
+Bornite.post(url); // Equivalent to Bornite.request(url, { method: 'POST' })
 
-Radar.put(url); // Equivalent to Radar.request(url, { method: 'PUT' })
+Bornite.put(url); // Equivalent to Bornite.request(url, { method: 'PUT' })
 
-Radar.patch(url); // Equivalent to Radar.request(url, { method: 'PATCH' })
+Bornite.patch(url); // Equivalent to Bornite.request(url, { method: 'PATCH' })
 
-Radar.delete(url); // Equivalent to Radar.request(url, { method: 'DELETE' })
+Bornite.delete(url); // Equivalent to Bornite.request(url, { method: 'DELETE' })
 ```
 
 [Back to top](#api)

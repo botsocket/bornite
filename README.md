@@ -1,6 +1,4 @@
-# Radar
-
-![Bot Bind's logo](https://botbind.com/images/logoBB.png)
+# Bornite
 
 ## HTTP requests made easy
 
@@ -13,7 +11,7 @@ Special thanks to all contributors of the following libraries:
 
 ### References
 
--   [Documentation and API](https://github.com/botbind/radar/blob/master/Documentation.md)
--   [Release notes](https://github.com/botbind/radar/labels/release%20notes)
--   [Bot Bind](https://botbind.com)
--   [Nebula](https://github.com/botbind/nebula)
+-   [Documentation and API](https://github.com/botsocket/bornite/blob/master/Documentation.md)
+-   [Releases](https://github.com/botsocket/bornite/releases)
+-   [BotSocket](https://botsocket.com)
+-   [Moonstone](https://github.com/botsocket/moonstone)

@@ -5,9 +5,9 @@ const Zlib = require('zlib');
 const Stream = require('stream');
 const Url = require('url');
 
-const Dust = require('@botbind/dust');
+const Bone = require('@botsocket/bone');
 
-const Radar = require('../src');
+const Bornite = require('../src');
 
 const internals = {
     baseUrl: 'http://localhost:3000',
@@ -37,12 +37,12 @@ describe('custom()', () => {
 
     it('should throw on incorrect parameters', () => {
 
-        expect(() => Radar.custom()).toThrow('Options must be provided');
+        expect(() => Bornite.custom()).toThrow('Options must be provided');
     });
 
     it('should request from custom instance', async () => {
 
-        const custom = Radar.custom({
+        const custom = Bornite.custom({
             baseUrl: internals.baseUrl + '/test/test2',
             method: 'POST',
             headers: {
@@ -76,7 +76,7 @@ describe('custom()', () => {
 
     it('should override settings provided to custom instance', async () => {
 
-        const custom = Radar.custom({ method: 'POST' });
+        const custom = Bornite.custom({ method: 'POST' });
         const server = await internals.server((request, response) => {
 
             expect(request.method).toBe('GET');
@@ -97,32 +97,32 @@ describe('request()', () => {
 
     it('should throw on incorrect parameters', () => {
 
-        expect(() => Radar.request(1)).toThrow('Url must be a string');
-        expect(() => Radar.request('x')).toThrow('Option method must be a string');
-        expect(() => Radar.request('x', { method: 1 })).toThrow('Option method must be a string');
-        expect(() => Radar.request('x', { method: 'x', payload: 1 })).toThrow('Option payload must be a string, a buffer, a stream, URLSearchParams or a serializable object');
-        expect(() => Radar.request('x', { method: 'GET', payload: {} })).toThrow('Option payload cannot be provided when method is GET or HEAD');
-        expect(() => Radar.request('x', { method: 'GeT', payload: {} })).toThrow('Option payload cannot be provided when method is GET or HEAD');
-        expect(() => Radar.request('x', { method: 'head', payload: {} })).toThrow('Option payload cannot be provided when method is GET or HEAD');
-        expect(() => Radar.request('x', { method: 'x', redirects: 'x' })).toThrow('Option redirects must be false or a number');
-        expect(() => Radar.request('x', { method: 'x', redirectMethod: 1 })).toThrow('Option redirectMethod must be a string');
-        expect(() => Radar.request('x', { method: 'x', gzip: 1 })).toThrow('Option gzip must be a boolean');
-        expect(() => Radar.request('x', { method: 'x', maxBytes: 'x' })).toThrow('Option maxBytes must be false or a number');
-        expect(() => Radar.request('x', { method: 'x', timeout: 'x' })).toThrow('Option timeout must be a number');
+        expect(() => Bornite.request(1)).toThrow('Url must be a string');
+        expect(() => Bornite.request('x')).toThrow('Option method must be a string');
+        expect(() => Bornite.request('x', { method: 1 })).toThrow('Option method must be a string');
+        expect(() => Bornite.request('x', { method: 'x', payload: 1 })).toThrow('Option payload must be a string, a buffer, a stream, URLSearchParams or a serializable object');
+        expect(() => Bornite.request('x', { method: 'GET', payload: {} })).toThrow('Option payload cannot be provided when method is GET or HEAD');
+        expect(() => Bornite.request('x', { method: 'GeT', payload: {} })).toThrow('Option payload cannot be provided when method is GET or HEAD');
+        expect(() => Bornite.request('x', { method: 'head', payload: {} })).toThrow('Option payload cannot be provided when method is GET or HEAD');
+        expect(() => Bornite.request('x', { method: 'x', redirects: 'x' })).toThrow('Option redirects must be false or a number');
+        expect(() => Bornite.request('x', { method: 'x', redirectMethod: 1 })).toThrow('Option redirectMethod must be a string');
+        expect(() => Bornite.request('x', { method: 'x', gzip: 1 })).toThrow('Option gzip must be a boolean');
+        expect(() => Bornite.request('x', { method: 'x', maxBytes: 'x' })).toThrow('Option maxBytes must be false or a number');
+        expect(() => Bornite.request('x', { method: 'x', timeout: 'x' })).toThrow('Option timeout must be a number');
     });
 
     it('should validate settings from custom instance', () => {
 
-        const custom = Radar.custom({ method: 'GET' });
+        const custom = Bornite.custom({ method: 'GET' });
         expect(() => custom.request('x', { payload: {} })).toThrow('Option payload cannot be provided when method is GET or HEAD');
 
-        const custom2 = Radar.custom({ method: 'POST' });
+        const custom2 = Bornite.custom({ method: 'POST' });
         expect(() => custom2.request('x', { method: 'GET', payload: {} })).toThrow('Option payload cannot be provided when method is GET or HEAD');
 
-        const custom3 = Radar.custom({ redirects: 5 });
+        const custom3 = Bornite.custom({ redirects: 5 });
         expect(() => custom3.request('x')).toThrow('Option method must be a string');
 
-        const custom4 = Radar.custom({ redirects: 'x' });
+        const custom4 = Bornite.custom({ redirects: 'x' });
         expect(() => custom4.get('x')).toThrow('Option redirects must be false or a number');
     });
 
@@ -136,7 +136,7 @@ describe('request()', () => {
             response.end(internals.defaultPayload);
         });
 
-        const response = await Radar.get(internals.baseUrl);
+        const response = await Bornite.get(internals.baseUrl);
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -150,8 +150,8 @@ describe('request()', () => {
             response.end(JSON.stringify(internals.jsonPayload));
         });
 
-        const response = await Radar.get(internals.baseUrl);
-        expect(Dust.equal(response.payload, internals.jsonPayload)).toBe(true);
+        const response = await Bornite.get(internals.baseUrl);
+        expect(Bone.equal(response.payload, internals.jsonPayload)).toBe(true);
 
         server.close();
     });
@@ -164,7 +164,7 @@ describe('request()', () => {
             response.end('{');
         });
 
-        await expect(Radar.get(internals.baseUrl)).rejects.toThrow('Failed to parse JSON: Unexpected end of JSON input');
+        await expect(Bornite.get(internals.baseUrl)).rejects.toThrow('Failed to parse JSON: Unexpected end of JSON input');
 
         server.close();
     });
@@ -180,7 +180,7 @@ describe('request()', () => {
             request.pipe(response);
         });
 
-        const response = await Radar.post(internals.baseUrl, { payload: internals.defaultPayload });
+        const response = await Bornite.post(internals.baseUrl, { payload: internals.defaultPayload });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -197,8 +197,8 @@ describe('request()', () => {
             request.pipe(response);
         });
 
-        const response = await Radar.post(internals.baseUrl, { payload: internals.jsonPayload });
-        expect(Dust.equal(response.payload, internals.jsonPayload)).toBe(true);
+        const response = await Bornite.post(internals.baseUrl, { payload: internals.jsonPayload });
+        expect(Bone.equal(response.payload, internals.jsonPayload)).toBe(true);
 
         server.close();
     });
@@ -215,8 +215,8 @@ describe('request()', () => {
         });
 
         const payload = { content: 'Ȓ' };
-        const response = await Radar.post(internals.baseUrl, { payload });
-        expect(Dust.equal(response.payload, payload)).toBe(true);
+        const response = await Bornite.post(internals.baseUrl, { payload });
+        expect(Bone.equal(response.payload, payload)).toBe(true);
 
         server.close();
     });
@@ -231,7 +231,7 @@ describe('request()', () => {
             request.pipe(response);
         });
 
-        const response = await Radar.post(internals.baseUrl, { payload: internals.bufferPayload });
+        const response = await Bornite.post(internals.baseUrl, { payload: internals.bufferPayload });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -245,7 +245,7 @@ describe('request()', () => {
             request.pipe(response);
         });
 
-        const response = await Radar.post(internals.baseUrl, { payload: internals.streamPayload });
+        const response = await Bornite.post(internals.baseUrl, { payload: internals.streamPayload });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -262,7 +262,7 @@ describe('request()', () => {
             request.pipe(response);
         });
 
-        const response = await Radar.post(internals.baseUrl, { payload: internals.searchParamsPayload });
+        const response = await Bornite.post(internals.baseUrl, { payload: internals.searchParamsPayload });
         expect(response.payload).toBe(internals.searchParamsPayload.toString());
 
         server.close();
@@ -280,14 +280,14 @@ describe('request()', () => {
         });
 
         const payload = [{ op: 'remove', path: '/test' }];
-        const response = await Radar.post(internals.baseUrl, {
+        const response = await Bornite.post(internals.baseUrl, {
             payload,
             headers: {
                 'Content-Type': contentType,
             },
         });
 
-        expect(Dust.equal(response.payload, payload)).toBe(true);
+        expect(Bone.equal(response.payload, payload)).toBe(true);
 
         server.close();
     });
@@ -302,7 +302,7 @@ describe('request()', () => {
             request.pipe(response);
         });
 
-        const response = await Radar.post(internals.baseUrl, {
+        const response = await Bornite.post(internals.baseUrl, {
             payload: internals.defaultPayload,
             headers: {
                 'Content-Length': 18,
@@ -322,10 +322,10 @@ describe('request()', () => {
             request.pipe(response);
         });
 
-        const response = await Radar.post(internals.baseUrl, {
+        const response = await Bornite.post(internals.baseUrl, {
             payload: internals.defaultPayload,
             headers: {
-                'User-Agent': 'radar',
+                'User-Agent': 'bornite',
             },
         });
 
@@ -336,7 +336,7 @@ describe('request()', () => {
 
     it('should request to an https resource', async () => {
 
-        const response = await Radar.get('https://www.google.com');
+        const response = await Bornite.get('https://www.google.com');
 
         expect(response.payload.toLowerCase().includes('</html>')).toBe(true);
     });
@@ -349,7 +349,7 @@ describe('request()', () => {
             response.end(internals.gzipPayload);
         });
 
-        const response = await Radar.get(internals.baseUrl);
+        const response = await Bornite.get(internals.baseUrl);
         expect(response.payload).toBe(internals.gzipPayload.toString());
 
         server.close();
@@ -365,7 +365,7 @@ describe('request()', () => {
             response.end(internals.gzipPayload);
         });
 
-        const response = await Radar.get(internals.baseUrl, { gzip: true });
+        const response = await Bornite.get(internals.baseUrl, { gzip: true });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -382,8 +382,8 @@ describe('request()', () => {
             response.end(gzipped);
         });
 
-        const response = await Radar.get(internals.baseUrl, { gzip: true });
-        expect(Dust.equal(response.payload, internals.jsonPayload)).toBe(true);
+        const response = await Bornite.get(internals.baseUrl, { gzip: true });
+        expect(Bone.equal(response.payload, internals.jsonPayload)).toBe(true);
 
         server.close();
     });
@@ -398,7 +398,7 @@ describe('request()', () => {
             response.end(internals.gzipPayload);
         });
 
-        const response = await Radar.get(internals.baseUrl, { gzip: true });
+        const response = await Bornite.get(internals.baseUrl, { gzip: true });
         expect(response.payload).toBe(internals.gzipPayload.toString());
 
         server.close();
@@ -414,7 +414,7 @@ describe('request()', () => {
             response.end(internals.gzipPayload);
         });
 
-        const response = await Radar.get(internals.baseUrl, { gzip: true });
+        const response = await Bornite.get(internals.baseUrl, { gzip: true });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -428,7 +428,7 @@ describe('request()', () => {
             response.end(internals.gzipPayload);
         });
 
-        const response = await Radar.get(internals.baseUrl, { gzip: true });
+        const response = await Bornite.get(internals.baseUrl, { gzip: true });
         expect(response.payload).toBe(internals.gzipPayload.toString());
 
         server.close();
@@ -442,7 +442,7 @@ describe('request()', () => {
             response.end(internals.gzipPayload.toString() + 'some random stuff that is not compressed');
         });
 
-        await expect(Radar.get(internals.baseUrl, { gzip: true })).rejects.toThrow('Failed to decompress: incorrect header check');
+        await expect(Bornite.get(internals.baseUrl, { gzip: true })).rejects.toThrow('Failed to decompress: incorrect header check');
 
         server.close();
     });
@@ -459,7 +459,7 @@ describe('request()', () => {
             response.end(internals.defaultPayload);
         });
 
-        const response = await Radar.get(`http://${auth}@localhost:3000/`);
+        const response = await Bornite.get(`http://${auth}@localhost:3000/`);
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -477,7 +477,7 @@ describe('request()', () => {
             response.end(internals.defaultPayload);
         });
 
-        const response = await Radar.get(`http://${auth}@localhost:3000/`);
+        const response = await Bornite.get(`http://${auth}@localhost:3000/`);
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -491,7 +491,7 @@ describe('request()', () => {
             response.end(internals.longPayload);
         });
 
-        await expect(Radar.get(internals.baseUrl, { maxBytes: 100 })).rejects.toThrow('Maximum payload size reached');
+        await expect(Bornite.get(internals.baseUrl, { maxBytes: 100 })).rejects.toThrow('Maximum payload size reached');
 
         server.close();
     });
@@ -504,7 +504,7 @@ describe('request()', () => {
             response.end(internals.longPayload);
         });
 
-        const response = await Radar.get(internals.baseUrl, { maxBytes: 10000 });
+        const response = await Bornite.get(internals.baseUrl, { maxBytes: 10000 });
         expect(response.payload).toBe(internals.longPayload);
 
         server.close();
@@ -518,7 +518,7 @@ describe('request()', () => {
             response.end();
         });
 
-        const response = await Radar.get(internals.baseUrl);
+        const response = await Bornite.get(internals.baseUrl);
 
         expect(response.statusCode).toBe(404);
         expect(response.statusMessage).toBe('Not Found');
@@ -541,7 +541,7 @@ describe('request()', () => {
             response.end();
         });
 
-        const promise = Radar.get(internals.baseUrl);
+        const promise = Bornite.get(internals.baseUrl);
 
         request.emit('error', new Error('Some error'));
 
@@ -553,7 +553,7 @@ describe('request()', () => {
 
     it('should reject when host is unavailable', async () => {
 
-        await expect(Radar.get(internals.baseUrl)).rejects.toThrow('connect ECONNREFUSED 127.0.0.1:3000');
+        await expect(Bornite.get(internals.baseUrl)).rejects.toThrow('connect ECONNREFUSED 127.0.0.1:3000');
     });
 
     it('should perform a patch request', async () => {
@@ -565,7 +565,7 @@ describe('request()', () => {
             response.end();
         });
 
-        await Radar.patch(internals.baseUrl);
+        await Bornite.patch(internals.baseUrl);
 
         server.close();
     });
@@ -579,7 +579,7 @@ describe('request()', () => {
             response.end();
         });
 
-        await Radar.put(internals.baseUrl);
+        await Bornite.put(internals.baseUrl);
 
         server.close();
     });
@@ -593,7 +593,7 @@ describe('request()', () => {
             response.end();
         });
 
-        await Radar.delete(internals.baseUrl);
+        await Bornite.delete(internals.baseUrl);
 
         server.close();
     });
@@ -615,7 +615,7 @@ describe('request()', () => {
             response.end();
         });
 
-        await Radar.get(internals.baseUrl, { agent });
+        await Bornite.get(internals.baseUrl, { agent });
 
         server.close();
         Http.request = original; // eslint-disable-line require-atomic-updates
@@ -631,7 +631,7 @@ describe('request()', () => {
             response.end(internals.defaultPayload);
         });
 
-        const response = await Radar.get('/test', { baseUrl: internals.baseUrl });
+        const response = await Bornite.get('/test', { baseUrl: internals.baseUrl });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -639,7 +639,7 @@ describe('request()', () => {
 
     it('should ignore baseUrl when path is absolute', async () => {
 
-        const response = await Radar.get('https://www.google.com', { baseUrl: internals.baseUrl });
+        const response = await Bornite.get('https://www.google.com', { baseUrl: internals.baseUrl });
         expect(response.payload.toLowerCase().includes('</html>')).toBe(true);
     });
 
@@ -653,7 +653,7 @@ describe('request()', () => {
             response.end(internals.defaultPayload);
         });
 
-        const response = await Radar.get('/test3/test4', { baseUrl: internals.baseUrl + '/test/test2' });
+        const response = await Bornite.get('/test3/test4', { baseUrl: internals.baseUrl + '/test/test2' });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -669,7 +669,7 @@ describe('request()', () => {
             response.end(internals.defaultPayload);
         });
 
-        const response = await Radar.get('test3/test4', { baseUrl: internals.baseUrl + '/test/test2/' });
+        const response = await Bornite.get('test3/test4', { baseUrl: internals.baseUrl + '/test/test2/' });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -685,7 +685,7 @@ describe('request()', () => {
                 response.end();
             });
 
-            await expect(Radar.post(internals.baseUrl)).rejects.toThrow('Maximum redirects reached');
+            await expect(Bornite.post(internals.baseUrl)).rejects.toThrow('Maximum redirects reached');
 
             server.close();
         });
@@ -698,7 +698,7 @@ describe('request()', () => {
                 response.end();
             });
 
-            await expect(Radar.post(internals.baseUrl, { redirects: false })).rejects.toThrow('Maximum redirects reached');
+            await expect(Bornite.post(internals.baseUrl, { redirects: false })).rejects.toThrow('Maximum redirects reached');
 
             server.close();
         });
@@ -711,7 +711,7 @@ describe('request()', () => {
                 response.end();
             });
 
-            await expect(Radar.post(internals.baseUrl, { redirects: 1, payload: internals.streamPayload }))
+            await expect(Bornite.post(internals.baseUrl, { redirects: 1, payload: internals.streamPayload }))
                 .rejects
                 .toThrow('Cannot follow redirects with stream payloads');
 
@@ -738,7 +738,7 @@ describe('request()', () => {
                 request.pipe(response);
             });
 
-            const response = await Radar.post(internals.baseUrl, { redirects: Infinity, payload: internals.defaultPayload });
+            const response = await Bornite.post(internals.baseUrl, { redirects: Infinity, payload: internals.defaultPayload });
             expect(response.payload).toBe(internals.defaultPayload);
 
             server.close();
@@ -756,7 +756,7 @@ describe('request()', () => {
                 }
             });
 
-            await expect(Radar.post(internals.baseUrl, { redirects: 1 })).rejects.toThrow('Maximum redirects reached');
+            await expect(Bornite.post(internals.baseUrl, { redirects: 1 })).rejects.toThrow('Maximum redirects reached');
 
             server.close();
         });
@@ -769,7 +769,7 @@ describe('request()', () => {
                 response.end();
             });
 
-            await expect(Radar.post(internals.baseUrl, { redirects: 1 })).rejects.toThrow('Redirect without location');
+            await expect(Bornite.post(internals.baseUrl, { redirects: 1 })).rejects.toThrow('Redirect without location');
 
             server.close();
         });
@@ -793,7 +793,7 @@ describe('request()', () => {
                 response.end(internals.defaultPayload);
             });
 
-            const response = await Radar.get(internals.baseUrl, { redirects: 1, redirectMethod: 'POST' });
+            const response = await Bornite.get(internals.baseUrl, { redirects: 1, redirectMethod: 'POST' });
             expect(response.payload).toBe(internals.defaultPayload);
 
             server.close();
@@ -822,7 +822,7 @@ describe('request()', () => {
                 response.end(internals.defaultPayload);
             });
 
-            const response = await Radar.post(internals.baseUrl, {
+            const response = await Bornite.post(internals.baseUrl, {
                 redirects: 1,
                 redirectMethod: 'GET',
                 payload: internals.jsonPayload,
@@ -856,7 +856,7 @@ describe('request()', () => {
                 response.end(internals.defaultPayload);
             });
 
-            const response = await Radar.post(internals.baseUrl, {
+            const response = await Bornite.post(internals.baseUrl, {
                 redirects: 1,
                 payload: internals.jsonPayload,
             });
@@ -886,7 +886,7 @@ describe('request()', () => {
                 request.pipe(response);
             });
 
-            const response = await Radar.post(internals.baseUrl, {
+            const response = await Bornite.post(internals.baseUrl, {
                 redirects: 1,
                 redirectMethod: 'GET',
                 payload: internals.defaultPayload,
@@ -917,7 +917,7 @@ describe('request()', () => {
                 request.pipe(response);
             });
 
-            const response = await Radar.post(internals.baseUrl, {
+            const response = await Bornite.post(internals.baseUrl, {
                 redirects: 1,
                 redirectMethod: 'GET',
                 payload: internals.defaultPayload,
@@ -947,7 +947,7 @@ describe('request()', () => {
                 request.pipe(response);
             });
 
-            const response = await Radar.post(internals.baseUrl, { redirects: 1, payload: internals.defaultPayload });
+            const response = await Bornite.post(internals.baseUrl, { redirects: 1, payload: internals.defaultPayload });
             expect(response.payload).toBe(internals.defaultPayload);
 
             server.close();
@@ -973,8 +973,8 @@ describe('request()', () => {
                 request.pipe(response);
             });
 
-            const response = await Radar.post(internals.baseUrl, { redirects: 1, payload: internals.jsonPayload });
-            expect(Dust.equal(response.payload, internals.jsonPayload)).toBe(true);
+            const response = await Bornite.post(internals.baseUrl, { redirects: 1, payload: internals.jsonPayload });
+            expect(Bone.equal(response.payload, internals.jsonPayload)).toBe(true);
 
             server.close();
         });
@@ -987,7 +987,7 @@ describe('request()', () => {
                 response.end();
             });
 
-            const response = await Radar.get(internals.baseUrl, { redirects: 1 });
+            const response = await Bornite.get(internals.baseUrl, { redirects: 1 });
             expect(response.payload.toLowerCase().includes('</html>')).toBe(true);
 
             server.close();

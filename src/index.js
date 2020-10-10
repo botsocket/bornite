@@ -6,7 +6,7 @@ const Url = require('url');
 const Stream = require('stream');
 const Zlib = require('zlib');
 
-const Dust = require('@botbind/dust');
+const Bone = require('@botsocket/bone');
 
 const internals = {
     protocolRx: /^https?:\/\//i,
@@ -18,7 +18,7 @@ const internals = {
     },
 };
 
-internals.Radar = class {
+internals.Bornite = class {
     constructor(settings) {
 
         this._settings = settings || internals.defaults;
@@ -38,30 +38,30 @@ internals.Radar = class {
 
     custom(options) {
 
-        Dust.assert(options !== undefined, 'Options must be provided');
+        Bone.assert(options !== undefined, 'Options must be provided');
 
         const settings = this._applyOptions(options);
-        return new internals.Radar(settings);
+        return new internals.Bornite(settings);
     }
 
     request(url, options = {}) {
 
         // Process parameters
 
-        Dust.assert(typeof url === 'string', 'Url must be a string');
+        Bone.assert(typeof url === 'string', 'Url must be a string');
 
         const settings = this._applyOptions(options);
 
-        Dust.assert(typeof settings.method === 'string', 'Option method must be a string');
-        Dust.assert(settings.baseUrl === undefined || typeof settings.baseUrl === 'string', 'Option baseUrl must be a string');
-        Dust.assert(!['GET', 'HEAD'].includes(settings.method.toUpperCase()) || settings.payload === undefined, 'Option payload cannot be provided when method is GET or HEAD');
-        Dust.assert(settings.payload === undefined || typeof settings.payload === 'object' || typeof settings.payload === 'string', 'Option payload must be a string, a buffer, a stream, URLSearchParams or a serializable object');
-        Dust.assert(settings.agent === undefined || typeof settings.agent === 'object', 'Option agent must be an object');
-        Dust.assert(settings.redirects === undefined || typeof settings.redirects === 'number' || settings.redirects === false, 'Option redirects must be false or a number');
-        Dust.assert(settings.redirectMethod === undefined || typeof settings.redirectMethod === 'string', 'Option redirectMethod must be a string');
-        Dust.assert(settings.gzip === undefined || typeof settings.gzip === 'boolean', 'Option gzip must be a boolean');
-        Dust.assert(settings.maxBytes === undefined || typeof settings.maxBytes === 'number' || settings.maxBytes === false, 'Option maxBytes must be false or a number');
-        Dust.assert(settings.timeout === undefined || typeof settings.timeout === 'number', 'Option timeout must be a number');
+        Bone.assert(typeof settings.method === 'string', 'Option method must be a string');
+        Bone.assert(settings.baseUrl === undefined || typeof settings.baseUrl === 'string', 'Option baseUrl must be a string');
+        Bone.assert(!['GET', 'HEAD'].includes(settings.method.toUpperCase()) || settings.payload === undefined, 'Option payload cannot be provided when method is GET or HEAD');
+        Bone.assert(settings.payload === undefined || typeof settings.payload === 'object' || typeof settings.payload === 'string', 'Option payload must be a string, a buffer, a stream, URLSearchParams or a serializable object');
+        Bone.assert(settings.agent === undefined || typeof settings.agent === 'object', 'Option agent must be an object');
+        Bone.assert(settings.redirects === undefined || typeof settings.redirects === 'number' || settings.redirects === false, 'Option redirects must be false or a number');
+        Bone.assert(settings.redirectMethod === undefined || typeof settings.redirectMethod === 'string', 'Option redirectMethod must be a string');
+        Bone.assert(settings.gzip === undefined || typeof settings.gzip === 'boolean', 'Option gzip must be a boolean');
+        Bone.assert(settings.maxBytes === undefined || typeof settings.maxBytes === 'number' || settings.maxBytes === false, 'Option maxBytes must be false or a number');
+        Bone.assert(settings.timeout === undefined || typeof settings.timeout === 'number', 'Option timeout must be a number');
 
         // Normalize settings
 
@@ -120,9 +120,9 @@ internals.Radar = class {
 internals.shortcut = function () {
 
     for (const shortcut of ['get', 'post', 'put', 'patch', 'delete']) {
-        internals.Radar.prototype[shortcut] = function (url, options = {}) {
+        internals.Bornite.prototype[shortcut] = function (url, options = {}) {
 
-            Dust.assert(!options.method, 'Option method is not allowed');
+            Bone.assert(!options.method, 'Option method is not allowed');
 
             return this.request(url, { ...options, method: shortcut.toUpperCase() });
         };
@@ -131,7 +131,7 @@ internals.shortcut = function () {
 
 internals.shortcut();
 
-module.exports = new internals.Radar();
+module.exports = new internals.Bornite();
 
 internals.Headers = class {
     constructor(headers) {

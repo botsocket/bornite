@@ -4,13 +4,13 @@ import Url = require('url');
 import Stream = require('stream');
 
 declare namespace internals {
-    class Radar {
+    class Bornite {
         /**
-         * Creates a custom Radar instance with common options where:
+         * Creates a custom Bornite instance with common options where:
          *
          * @param options - Common options that apply to every request.
          */
-        custom(options: Radar.Options): Radar;
+        custom(options: Bornite.Options): Bornite;
 
         /**
          * Makes a request where:
@@ -18,7 +18,7 @@ declare namespace internals {
          * @param url - The URL to send the request.
          * @param options - Optional options.
          */
-        request<T extends string | object>(url: string, options?: Radar.Options): Promise<Radar.Response<T>>;
+        request<T extends string | object>(url: string, options?: Bornite.Options): Promise<Bornite.Response<T>>;
 
         /**
          * Performs a HTTP GET request
@@ -26,7 +26,7 @@ declare namespace internals {
          * @param url - The URL to send the request.
          * @param options - Optional options.
          */
-        get<T extends string | object>(url: string, options?: Omit<Radar.Options, 'method'>): Promise<Radar.Response<T>>
+        get<T extends string | object>(url: string, options?: Omit<Bornite.Options, 'method'>): Promise<Bornite.Response<T>>
 
         /**
          * Performs a HTTP POST request
@@ -34,7 +34,7 @@ declare namespace internals {
          * @param url - The URL to send the request.
          * @param options - Optional options.
          */
-        post<T extends string | object>(url: string, options?: Omit<Radar.Options, 'method'>): Promise<Radar.Response<T>>
+        post<T extends string | object>(url: string, options?: Omit<Bornite.Options, 'method'>): Promise<Bornite.Response<T>>
 
         /**
          * Performs a HTTP PUT request
@@ -42,7 +42,7 @@ declare namespace internals {
          * @param url - The URL to send the request.
          * @param options - Optional options.
          */
-        put<T extends string | object>(url: string, options?: Omit<Radar.Options, 'method'>): Promise<Radar.Response<T>>
+        put<T extends string | object>(url: string, options?: Omit<Bornite.Options, 'method'>): Promise<Bornite.Response<T>>
 
         /**
          * Performs a HTTP PATCH request
@@ -50,7 +50,7 @@ declare namespace internals {
          * @param url - The URL to send the request.
          * @param options - Optional options.
          */
-        patch<T extends string | object>(url: string, options?: Omit<Radar.Options, 'method'>): Promise<Radar.Response<T>>
+        patch<T extends string | object>(url: string, options?: Omit<Bornite.Options, 'method'>): Promise<Bornite.Response<T>>
 
         /**
          * Performs a HTTP DELETE request
@@ -58,11 +58,11 @@ declare namespace internals {
          * @param url - The URL to send the request.
          * @param options - Optional options.
          */
-        delete<T extends string | object>(url: string, options?: Omit<Radar.Options, 'method'>): Promise<Radar.Response<T>>
+        delete<T extends string | object>(url: string, options?: Omit<Bornite.Options, 'method'>): Promise<Bornite.Response<T>>
     }
 }
 
-declare namespace Radar {
+declare namespace Bornite {
     interface Options {
         /**
          * The request method to use. Case-insensitive.
@@ -123,7 +123,7 @@ declare namespace Radar {
 
     interface Response<T> {
         /**
-         * Payload returned by the server. Radar automatically parses the content if the `Content-Type` header is set to `application/json`.
+         * Payload returned by the server. Bornite automatically parses the content if the `Content-Type` header is set to `application/json`.
          */
         payload?: T;
 
@@ -149,6 +149,6 @@ declare namespace Radar {
     }
 }
 
-declare const radar: internals.Radar;
+declare const bornite: internals.Bornite;
 
-export = radar;
+export = bornite;
