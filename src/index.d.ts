@@ -1,7 +1,11 @@
-import Http = require('http');
-import Https = require('https');
-import Url = require('url');
-import Stream = require('stream');
+import * as Http from 'http';
+import * as Https from 'https';
+import * as Url from 'url';
+import * as Stream from 'stream';
+
+declare const bornite: internals.Bornite;
+
+export = bornite;
 
 declare namespace internals {
     class Bornite {
@@ -10,7 +14,7 @@ declare namespace internals {
          *
          * @param options - Common options that apply to every request.
          */
-        custom(options: Bornite.Options): Bornite;
+        custom(options: Options): Bornite;
 
         /**
          * Makes a request where:
@@ -18,7 +22,7 @@ declare namespace internals {
          * @param url - The URL to send the request.
          * @param options - Optional options.
          */
-        request<T extends string | object>(url: string, options?: Bornite.Options): Promise<Bornite.Response<T>>;
+        request<T extends string | object>(url: string, options?: Options): Promise<Response<T>>;
 
         /**
          * Performs a HTTP GET request
@@ -26,7 +30,7 @@ declare namespace internals {
          * @param url - The URL to send the request.
          * @param options - Optional options.
          */
-        get<T extends string | object>(url: string, options?: Omit<Bornite.Options, 'method'>): Promise<Bornite.Response<T>>
+        get<T extends string | object>(url: string, options?: Omit<Options, 'method'>): Promise<Response<T>>
 
         /**
          * Performs a HTTP POST request
@@ -34,7 +38,7 @@ declare namespace internals {
          * @param url - The URL to send the request.
          * @param options - Optional options.
          */
-        post<T extends string | object>(url: string, options?: Omit<Bornite.Options, 'method'>): Promise<Bornite.Response<T>>
+        post<T extends string | object>(url: string, options?: Omit<Options, 'method'>): Promise<Response<T>>
 
         /**
          * Performs a HTTP PUT request
@@ -42,7 +46,7 @@ declare namespace internals {
          * @param url - The URL to send the request.
          * @param options - Optional options.
          */
-        put<T extends string | object>(url: string, options?: Omit<Bornite.Options, 'method'>): Promise<Bornite.Response<T>>
+        put<T extends string | object>(url: string, options?: Omit<Options, 'method'>): Promise<Response<T>>
 
         /**
          * Performs a HTTP PATCH request
@@ -50,7 +54,7 @@ declare namespace internals {
          * @param url - The URL to send the request.
          * @param options - Optional options.
          */
-        patch<T extends string | object>(url: string, options?: Omit<Bornite.Options, 'method'>): Promise<Bornite.Response<T>>
+        patch<T extends string | object>(url: string, options?: Omit<Options, 'method'>): Promise<Response<T>>
 
         /**
          * Performs a HTTP DELETE request
@@ -58,67 +62,66 @@ declare namespace internals {
          * @param url - The URL to send the request.
          * @param options - Optional options.
          */
-        delete<T extends string | object>(url: string, options?: Omit<Bornite.Options, 'method'>): Promise<Bornite.Response<T>>
+        delete<T extends string | object>(url: string, options?: Omit<Options, 'method'>): Promise<Response<T>>
     }
-}
 
-declare namespace Bornite {
+
     interface Options {
         /**
          * The request method to use. Case-insensitive.
          */
-        method?: string;
+        readonly method?: string;
 
         /**
          * Base URL that is resolved with `url` to form a full URL. Most useful when used with `custom()`
          */
-        baseUrl?: string;
+        readonly baseUrl?: string;
 
         /**
          * A hash of case-insensitive header names and their values. `Content-Length`, `Content-Type` and `Accept-Encoding` are set by default if possible.
          */
-        headers?: Http.OutgoingHttpHeaders;
+        readonly headers?: Http.OutgoingHttpHeaders;
 
         /**
          * The request payload. Can be a string, a buffer, a stream, `URLSearchParams` or a serializable object. If `method` is `GET` or `HEAD`, this key is forbidden.
          */
-        payload?: string | object | Buffer | Stream.Readable | Url.URLSearchParams;
+        readonly payload?: string | object | Buffer | Stream.Readable | Url.URLSearchParams;
 
         /**
          * The HTTP Agent passed directly to `Http.request()`.
          */
-        agent?: Http.Agent | Https.Agent;
+        readonly agent?: Http.Agent | Https.Agent;
 
         /**
          * The number of redirects to follow. Set to `0` or `false` to disable redirection. Set to `Infinity` to follow all possible redirects. Defaults to `0`.
          *
          * @default 0
          */
-        redirects?: number | false;
+        readonly redirects?: number | false;
 
         /**
          * The method to change to when performing `301` and `302` redirects. Note that `payload` is not forwarded if set to `GET` or `HEAD`. Defaults to using `method`.
          */
-        redirectMethod?: string;
+        readonly redirectMethod?: string;
 
         /**
          * Whether to decompress gzipped payloads. Defaults to `false`.
          *
          * @default false
          */
-        gzip?: boolean;
+        readonly gzip?: boolean;
 
         /**
          * The maximum size in bytes the response payload can have. Set to `0` to disable counting bytes. Defaults to `0`.
          *
          * @default 0
          */
-        maxBytes?: number;
+        readonly maxBytes?: number;
 
         /**
          * Socket timeout in milliseconds. Passed directly to `Http.request()`.
          */
-        timeout?: number;
+        readonly timeout?: number;
     }
 
     interface Response<T> {
@@ -148,7 +151,3 @@ declare namespace Bornite {
         raw: Http.IncomingMessage;
     }
 }
-
-declare const bornite: internals.Bornite;
-
-export = bornite;

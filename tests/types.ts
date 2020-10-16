@@ -1,9 +1,9 @@
-import Http = require('http');
-import Https = require('https');
-import Stream = require('stream');
-import Url = require('url');
+import * as Http from 'http';
+import * as Https from 'https';
+import * as Stream from 'stream';
+import * as Url from 'url';
 
-import Bornite = require('../src');
+import * as Bornite from '../src';
 
 // custom()
 
