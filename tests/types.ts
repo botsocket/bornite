@@ -19,6 +19,11 @@ const custom = Bornite.custom({
     gzip: true,
     maxBytes: 100000,
     timeout: 5000,
+    validateStatus: false,
+});
+
+const customStatusValidator = Bornite.custom({
+    validateStatus: (statusCode) => true,
 });
 
 custom.request('test', {

@@ -62,6 +62,7 @@ internals.Bornite = class {
         Bone.assert(settings.gzip === undefined || typeof settings.gzip === 'boolean', 'Option gzip must be a boolean');
         Bone.assert(settings.maxBytes === undefined || typeof settings.maxBytes === 'number' || settings.maxBytes === false, 'Option maxBytes must be false or a number');
         Bone.assert(settings.timeout === undefined || typeof settings.timeout === 'number', 'Option timeout must be a number');
+        Bone.assert(settings.validateStatus === undefined || ['boolean', 'function'].includes(typeof settings.validateStatus), 'Option validateStatus must be a boolean or a function');
 
         // Normalize settings
 
@@ -190,6 +191,14 @@ internals.request = function (url, settings, callback) {
 
         request.destroy();
         request.removeAllListeners();
+
+        if (error &&
+            response) {
+
+            error.message = `Request to "${fullUrl}" failed: ${error.message}`;
+            error.response = response;
+        }
+
         callback(error, response);
     };
 
@@ -277,17 +286,24 @@ internals.redirectMethod = function (code, method, settings) {
     }
 };
 
-internals.read = function (response, settings, callback) {
+internals.read = function (raw, settings, callback) {
+
+    const response = {
+        headers: raw.headers,
+        statusCode: raw.statusCode,
+        statusMessage: raw.statusMessage,
+        raw,
+    };
 
     // Setup reader
 
     const reader = new internals.Reader(settings.maxBytes);
 
-    const finalize = (error, content) => {
+    const finalize = (error) => {
 
         reader.destroy();
         reader.removeAllListeners();
-        callback(error, content);
+        callback(error, response);
     };
 
     reader.once('error', (error) => {
@@ -299,30 +315,34 @@ internals.read = function (response, settings, callback) {
 
         const contentType = response.headers['content-type'] || '';
         const mime = contentType.split(';')[0].trim().toLowerCase();
-        let payload = reader.content();
+
+        response.payload = reader.content();
 
         if (mime === 'application/json') {
             try {
-                payload = JSON.parse(payload);
+                response.payload = JSON.parse(response.payload);
             }
             catch (error) {
-                return finalize(new Error(`Failed to parse JSON: ${error.message}`));
+                return finalize(new Error(`Invalid JSON syntax - ${error.message}`));
             }
         }
 
-        finalize(null, {
-            payload,
-            headers: response.headers,
-            statusCode: response.statusCode,
-            statusMessage: response.statusMessage,
-            raw: response,
-        });
+        if (settings.validateStatus) {
+            const validate = typeof settings.validateStatus === 'function' ? settings.validateStatus : internals.validateStatus;
+            const isValid = validate(response.statusCode);
+
+            if (!isValid) {
+                return finalize(new Error(`Server responded with status code ${response.statusCode} - ${response.statusMessage}`));
+            }
+        }
+
+        finalize();
     });
 
     // Decompress
 
     if (!settings.gzip) {
-        response.pipe(reader);
+        raw.pipe(reader);
         return;
     }
 
@@ -333,7 +353,7 @@ internals.read = function (response, settings, callback) {
         response.statusCode === 204 ||
         response.statusCode === 304) {
 
-        response.pipe(reader);
+        raw.pipe(reader);
         return;
     }
 
@@ -347,14 +367,19 @@ internals.read = function (response, settings, callback) {
             gunzip.destroy();
             gunzip.removeAllListeners();
 
-            finalize(new Error(`Failed to decompress: ${error.message}`));
+            finalize(new Error(`Decompression error - ${error.message}`));
         });
 
-        response.pipe(gunzip).pipe(reader);
+        raw.pipe(gunzip).pipe(reader);
         return;
     }
 
-    response.pipe(reader);
+    raw.pipe(reader);
+};
+
+internals.validateStatus = function (statusCode) {
+
+    return statusCode >= 200 && statusCode < 300;
 };
 
 internals.Reader = class extends Stream.Writable {

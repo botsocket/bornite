@@ -109,6 +109,7 @@ describe('request()', () => {
         expect(() => Bornite.request('x', { method: 'x', gzip: 1 })).toThrow('Option gzip must be a boolean');
         expect(() => Bornite.request('x', { method: 'x', maxBytes: 'x' })).toThrow('Option maxBytes must be false or a number');
         expect(() => Bornite.request('x', { method: 'x', timeout: 'x' })).toThrow('Option timeout must be a number');
+        expect(() => Bornite.request('x', { method: 'x', validateStatus: 'x' })).toThrow('Option validateStatus must be a boolean or a function');
     });
 
     it('should validate settings from custom instance', () => {
@@ -164,7 +165,16 @@ describe('request()', () => {
             response.end('{');
         });
 
-        await expect(Bornite.get(internals.baseUrl)).rejects.toThrow('Failed to parse JSON: Unexpected end of JSON input');
+        try {
+            await Bornite.get(internals.baseUrl);
+            throw new Error('');            // Throw dummy message to trigger catch block in case request does not fail
+        }
+        catch (error) {
+            expect(error.message).toBe(`Request to "${internals.baseUrl}" failed: Invalid JSON syntax - Unexpected end of JSON input`);
+            expect(error.response.statusCode).toBe(200);
+            expect(error.response.statusMessage).toBe('OK');
+            expect(error.response.payload).toBe('{');
+        }
 
         server.close();
     });
@@ -442,7 +452,16 @@ describe('request()', () => {
             response.end(internals.gzipPayload.toString() + 'some random stuff that is not compressed');
         });
 
-        await expect(Bornite.get(internals.baseUrl, { gzip: true })).rejects.toThrow('Failed to decompress: incorrect header check');
+        try {
+            await Bornite.get(internals.baseUrl, { gzip: true });
+            throw new Error('');            // Throw dummy message to trigger catch block in case request does not fail
+        }
+        catch (error) {
+            expect(error.message).toBe(`Request to "${internals.baseUrl}" failed: Decompression error - incorrect header check`);
+            expect(error.response.statusCode).toBe(200);
+            expect(error.response.statusMessage).toBe('OK');
+            expect(error.response.payload).toBe(undefined);             // Failed at decompression step, therefore no payload will be returned
+        }
 
         server.close();
     });
@@ -670,6 +689,64 @@ describe('request()', () => {
         });
 
         const response = await Bornite.get('test3/test4', { baseUrl: internals.baseUrl + '/test/test2/' });
+        expect(response.payload).toBe(internals.defaultPayload);
+
+        server.close();
+    });
+
+    it('should throw if validateStatus returns false (default validator)', async () => {
+
+        const server = await internals.server((_, response) => {
+
+            response.writeHead(404, { 'Content-Type': 'application/json' });
+            response.end(JSON.stringify(internals.jsonPayload));
+        });
+
+        try {
+            await Bornite.get(internals.baseUrl, { validateStatus: true });
+            throw new Error('');            // Throw dummy message to trigger catch block in case request does not fail
+        }
+        catch (error) {
+            expect(error.message).toBe(`Request to "${internals.baseUrl}" failed: Server responded with status code 404 - Not Found`);
+            expect(error.response.statusCode).toBe(404);
+            expect(error.response.statusMessage).toBe('Not Found');
+            expect(Bone.equal(error.response.payload, internals.jsonPayload)).toBe(true);
+        }
+
+        server.close();
+    });
+
+    it('should throw if validateStatus returns false (custom validator)', async () => {
+
+        const server = await internals.server((_, response) => {
+
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            response.end(JSON.stringify(internals.jsonPayload));
+        });
+
+        try {
+            await Bornite.get(internals.baseUrl, { validateStatus: () => false });
+            throw new Error('');            // Throw dummy message to trigger catch block in case request does not fail
+        }
+        catch (error) {
+            expect(error.message).toBe(`Request to "${internals.baseUrl}" failed: Server responded with status code 200 - OK`);
+            expect(error.response.statusCode).toBe(200);
+            expect(error.response.statusMessage).toBe('OK');
+            expect(Bone.equal(error.response.payload, internals.jsonPayload)).toBe(true);
+        }
+
+        server.close();
+    });
+
+    it('should continue if validateStatus returns true', async () => {
+
+        const server = await internals.server((request, response) => {
+
+            response.writeHead(200, { 'Content-Type': 'text/plain' });
+            request.pipe(response);
+        });
+
+        const response = await Bornite.post(internals.baseUrl, { payload: internals.defaultPayload, validateStatus: true });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();

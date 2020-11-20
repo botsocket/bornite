@@ -122,6 +122,13 @@ declare namespace internals {
          * Socket timeout in milliseconds. Passed directly to `Http.request()`.
          */
         readonly timeout?: number;
+
+        /**
+         * Whether to validate response status code. If sets to `true`, Bornite will allow 2xx codes.
+         *
+         * @default false
+         */
+        readonly validateStatus?: boolean | ((statusCode: number) => boolean);
     }
 
     interface Response<T> {

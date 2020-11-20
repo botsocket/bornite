@@ -109,6 +109,7 @@ Makes a request where:
     -   `gzip`: Whether to decompress gzipped payloads. Defaults to `false`.
     -   `maxBytes`: The maximum size in bytes the response payload can have. Set to `0` to disable counting bytes. Defaults to `0`.
     -   `timeout`: Socket timeout in milliseconds. Passed directly to `Http.request()`.
+    -   `validateStatus`: Whether to validate response status code. Can be a boolean or a function of signature `function (statusCode) {}` returning a boolean indicating whether the response is accepted. If sets to `true`, Bornite will allow 2xx codes. Defaults to `false`.
 
 ```js
 const response = await Bornite.request('/images', {
@@ -122,8 +123,11 @@ const response = await Bornite.request('/images', {
     gzip: true,
     maxBytes: 5000,
     timeout: 2000,
+    validateStatus: (statusCode) => statusCode === 200,
 }); // Requests to https://www.google.com/images
 ```
+
+Any error thrown after the response has been received (for example, when Bornite fails to parse JSON or when `validateStatus` returns false) will be decorated with the property `response` which can be accessed should it be processed further.
 
 [Back to top](#api)
 
