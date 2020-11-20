@@ -1,6 +1,6 @@
 {
     "name": "@botsocket/bornite",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "description": "HTTP requests made easy",
     "main": "src/index.js",
     "types": "src/index.d.ts",
