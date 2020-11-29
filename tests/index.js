@@ -572,8 +572,7 @@ describe('request()', () => {
 
     it('should reject when host is unavailable', async () => {
 
-        const port = 3000;
-        await expect(Bornite.get(internals.baseUrl + port)).rejects.toThrow('connect ECONNREFUSED 127.0.0.1:' + port);
+        await expect(Bornite.get('http://localhost')).rejects.toThrow('connect ECONNREFUSED 127.0.0.1');
     });
 
     it('should perform a patch request', async () => {
@@ -659,7 +658,7 @@ describe('request()', () => {
 
     it('should ignore baseUrl when path is absolute', async () => {
 
-        const response = await Bornite.get('https://www.google.com', { baseUrl: internals.baseUrl + 3000 });
+        const response = await Bornite.get('https://www.google.com', { baseUrl: 'http://localhost' });
         expect(response.payload.toLowerCase().includes('</html>')).toBe(true);
     });
 
