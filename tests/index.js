@@ -10,7 +10,7 @@ const Bone = require('@botsocket/bone');
 const Bornite = require('../src');
 
 const internals = {
-    baseUrl: 'http://localhost:3000',
+    baseUrl: 'http://localhost:',
     defaultPayload: 'Some random string',
     jsonPayload: {
         a: 1,
@@ -42,15 +42,7 @@ describe('custom()', () => {
 
     it('should request from custom instance', async () => {
 
-        const custom = Bornite.custom({
-            baseUrl: internals.baseUrl + '/test/test2',
-            method: 'POST',
-            headers: {
-                header1: 'x',
-            },
-        });
-
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.method).toBe('POST');
             expect(request.url).toBe('/test/test2/test3/test4');
@@ -60,6 +52,14 @@ describe('custom()', () => {
 
             response.writeHead(200, { 'Content-Type': 'text/plain' });
             request.pipe(response);
+        });
+
+        const custom = Bornite.custom({
+            baseUrl: internals.baseUrl + port + '/test/test2',
+            method: 'POST',
+            headers: {
+                header1: 'x',
+            },
         });
 
         const response = await custom.request('/test3/test4', {
@@ -77,7 +77,7 @@ describe('custom()', () => {
     it('should override settings provided to custom instance', async () => {
 
         const custom = Bornite.custom({ method: 'POST' });
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.method).toBe('GET');
 
@@ -85,7 +85,7 @@ describe('custom()', () => {
             response.end(internals.defaultPayload);
         });
 
-        const response = await custom.get(internals.baseUrl);           // Override method
+        const response = await custom.get(internals.baseUrl + port);           // Override method
 
         expect(response.payload).toBe(internals.defaultPayload);
 
@@ -129,7 +129,7 @@ describe('request()', () => {
 
     it('should perform a get request', async () => {
 
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.method).toBe('GET');
 
@@ -137,7 +137,7 @@ describe('request()', () => {
             response.end(internals.defaultPayload);
         });
 
-        const response = await Bornite.get(internals.baseUrl);
+        const response = await Bornite.get(internals.baseUrl + port);
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -145,13 +145,13 @@ describe('request()', () => {
 
     it('should get json', async () => {
 
-        const server = await internals.server((_, response) => {
+        const { server, port } = await internals.server((_, response) => {
 
             response.writeHead(200, { 'Content-Type': 'application/json' });
             response.end(JSON.stringify(internals.jsonPayload));
         });
 
-        const response = await Bornite.get(internals.baseUrl);
+        const response = await Bornite.get(internals.baseUrl + port);
         expect(Bone.equal(response.payload, internals.jsonPayload)).toBe(true);
 
         server.close();
@@ -159,18 +159,18 @@ describe('request()', () => {
 
     it('should reject on corrupted json', async () => {
 
-        const server = await internals.server((_, response) => {
+        const { server, port } = await internals.server((_, response) => {
 
             response.writeHead(200, { 'Content-Type': 'application/json' });
             response.end('{');
         });
 
         try {
-            await Bornite.get(internals.baseUrl);
+            await Bornite.get(internals.baseUrl + port);
             throw new Error('');            // Throw dummy message to trigger catch block in case request does not fail
         }
         catch (error) {
-            expect(error.message).toBe(`Request to "${internals.baseUrl}" failed: Invalid JSON syntax - Unexpected end of JSON input`);
+            expect(error.message).toBe(`Request to "${internals.baseUrl + port}" failed: Invalid JSON syntax - Unexpected end of JSON input`);
             expect(error.response.statusCode).toBe(200);
             expect(error.response.statusMessage).toBe('OK');
             expect(error.response.payload).toBe('{');
@@ -181,7 +181,7 @@ describe('request()', () => {
 
     it('should perform a post request', async () => {
 
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.method).toBe('POST');
             expect(request.headers['content-length']).toBe('18');
@@ -190,7 +190,7 @@ describe('request()', () => {
             request.pipe(response);
         });
 
-        const response = await Bornite.post(internals.baseUrl, { payload: internals.defaultPayload });
+        const response = await Bornite.post(internals.baseUrl + port, { payload: internals.defaultPayload });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -198,7 +198,7 @@ describe('request()', () => {
 
     it('should perform a post request with json payload', async () => {
 
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.headers['content-length']).toBe('27');
             expect(request.headers['content-type']).toBe('application/json');
@@ -207,7 +207,7 @@ describe('request()', () => {
             request.pipe(response);
         });
 
-        const response = await Bornite.post(internals.baseUrl, { payload: internals.jsonPayload });
+        const response = await Bornite.post(internals.baseUrl + port, { payload: internals.jsonPayload });
         expect(Bone.equal(response.payload, internals.jsonPayload)).toBe(true);
 
         server.close();
@@ -215,7 +215,7 @@ describe('request()', () => {
 
     it('should perform a post request with a payload with unicode characters', async () => {
 
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.headers['content-length']).toBe('16');
             expect(request.headers['content-type']).toBe('application/json');
@@ -225,7 +225,7 @@ describe('request()', () => {
         });
 
         const payload = { content: 'Ȓ' };
-        const response = await Bornite.post(internals.baseUrl, { payload });
+        const response = await Bornite.post(internals.baseUrl + port, { payload });
         expect(Bone.equal(response.payload, payload)).toBe(true);
 
         server.close();
@@ -233,7 +233,7 @@ describe('request()', () => {
 
     it('should perform a post request with buffer payload', async () => {
 
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.headers['content-length']).toBe('18');
 
@@ -241,7 +241,7 @@ describe('request()', () => {
             request.pipe(response);
         });
 
-        const response = await Bornite.post(internals.baseUrl, { payload: internals.bufferPayload });
+        const response = await Bornite.post(internals.baseUrl + port, { payload: internals.bufferPayload });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -249,13 +249,13 @@ describe('request()', () => {
 
     it('should perform a post request with stream payload', async () => {
 
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             response.writeHead(200);
             request.pipe(response);
         });
 
-        const response = await Bornite.post(internals.baseUrl, { payload: internals.streamPayload });
+        const response = await Bornite.post(internals.baseUrl + port, { payload: internals.streamPayload });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -263,7 +263,7 @@ describe('request()', () => {
 
     it('should perform a post request with URLSearchParams', async () => {
 
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.headers['content-type']).toBe('application/x-www-form-urlencoded');
             expect(request.headers['content-length']).toBe('7');
@@ -272,7 +272,7 @@ describe('request()', () => {
             request.pipe(response);
         });
 
-        const response = await Bornite.post(internals.baseUrl, { payload: internals.searchParamsPayload });
+        const response = await Bornite.post(internals.baseUrl + port, { payload: internals.searchParamsPayload });
         expect(response.payload).toBe(internals.searchParamsPayload.toString());
 
         server.close();
@@ -281,7 +281,7 @@ describe('request()', () => {
     it('should perform a post request with custom content-type', async () => {
 
         const contentType = 'application/json-patch+json';
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.headers['content-type']).toBe(contentType);
 
@@ -290,7 +290,7 @@ describe('request()', () => {
         });
 
         const payload = [{ op: 'remove', path: '/test' }];
-        const response = await Bornite.post(internals.baseUrl, {
+        const response = await Bornite.post(internals.baseUrl + port, {
             payload,
             headers: {
                 'Content-Type': contentType,
@@ -304,7 +304,7 @@ describe('request()', () => {
 
     it('should not override content-length if provided', async () => {
 
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.headers['content-length']).toBe('18');
 
@@ -312,7 +312,7 @@ describe('request()', () => {
             request.pipe(response);
         });
 
-        const response = await Bornite.post(internals.baseUrl, {
+        const response = await Bornite.post(internals.baseUrl + port, {
             payload: internals.defaultPayload,
             headers: {
                 'Content-Length': 18,
@@ -326,13 +326,13 @@ describe('request()', () => {
 
     it('should perform a post request with headers', async () => {
 
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             response.writeHead(200, { 'Content-Type': 'text/plain' });
             request.pipe(response);
         });
 
-        const response = await Bornite.post(internals.baseUrl, {
+        const response = await Bornite.post(internals.baseUrl + port, {
             payload: internals.defaultPayload,
             headers: {
                 'User-Agent': 'bornite',
@@ -353,13 +353,13 @@ describe('request()', () => {
 
     it('should not decompress by default', async () => {
 
-        const server = await internals.server((_, response) => {
+        const { server, port } = await internals.server((_, response) => {
 
             response.writeHead(200, { 'Content-Type': 'text/plain', 'Content-Encoding': 'gzip' });
             response.end(internals.gzipPayload);
         });
 
-        const response = await Bornite.get(internals.baseUrl);
+        const response = await Bornite.get(internals.baseUrl + port);
         expect(response.payload).toBe(internals.gzipPayload.toString());
 
         server.close();
@@ -367,7 +367,7 @@ describe('request()', () => {
 
     it('should decompress if gzip is set to true', async () => {
 
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.headers['accept-encoding']).toBe('gzip');
 
@@ -375,7 +375,7 @@ describe('request()', () => {
             response.end(internals.gzipPayload);
         });
 
-        const response = await Bornite.get(internals.baseUrl, { gzip: true });
+        const response = await Bornite.get(internals.baseUrl + port, { gzip: true });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -384,7 +384,7 @@ describe('request()', () => {
     it('should decompress json', async () => {
 
         const gzipped = Zlib.gzipSync(JSON.stringify(internals.jsonPayload));
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.headers['accept-encoding']).toBe('gzip');
 
@@ -392,7 +392,7 @@ describe('request()', () => {
             response.end(gzipped);
         });
 
-        const response = await Bornite.get(internals.baseUrl, { gzip: true });
+        const response = await Bornite.get(internals.baseUrl + port, { gzip: true });
         expect(Bone.equal(response.payload, internals.jsonPayload)).toBe(true);
 
         server.close();
@@ -400,7 +400,7 @@ describe('request()', () => {
 
     it('should not decompress if no Content-Encoding is specified', async () => {
 
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.headers['accept-encoding']).toBe('gzip');
 
@@ -408,7 +408,7 @@ describe('request()', () => {
             response.end(internals.gzipPayload);
         });
 
-        const response = await Bornite.get(internals.baseUrl, { gzip: true });
+        const response = await Bornite.get(internals.baseUrl + port, { gzip: true });
         expect(response.payload).toBe(internals.gzipPayload.toString());
 
         server.close();
@@ -416,7 +416,7 @@ describe('request()', () => {
 
     it('should decompress for x-gzip encoding', async () => {
 
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.headers['accept-encoding']).toBe('gzip');
 
@@ -424,7 +424,7 @@ describe('request()', () => {
             response.end(internals.gzipPayload);
         });
 
-        const response = await Bornite.get(internals.baseUrl, { gzip: true });
+        const response = await Bornite.get(internals.baseUrl + port, { gzip: true });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -432,13 +432,13 @@ describe('request()', () => {
 
     it('should not decompress any other Content-Encoding', async () => {
 
-        const server = await internals.server((_, response) => {
+        const { server, port } = await internals.server((_, response) => {
 
             response.writeHead(200, { 'Content-Type': 'text/plain', 'Content-Encoding': 'deflate' });
             response.end(internals.gzipPayload);
         });
 
-        const response = await Bornite.get(internals.baseUrl, { gzip: true });
+        const response = await Bornite.get(internals.baseUrl + port, { gzip: true });
         expect(response.payload).toBe(internals.gzipPayload.toString());
 
         server.close();
@@ -446,18 +446,18 @@ describe('request()', () => {
 
     it('should throw on corrupted compression', async () => {
 
-        const server = await internals.server((_, response) => {
+        const { server, port } = await internals.server((_, response) => {
 
             response.writeHead(200, { 'Content-Type': 'text/plain', 'Content-Encoding': 'gzip' });
             response.end(internals.gzipPayload.toString() + 'some random stuff that is not compressed');
         });
 
         try {
-            await Bornite.get(internals.baseUrl, { gzip: true });
+            await Bornite.get(internals.baseUrl + port, { gzip: true });
             throw new Error('');            // Throw dummy message to trigger catch block in case request does not fail
         }
         catch (error) {
-            expect(error.message).toBe(`Request to "${internals.baseUrl}" failed: Decompression error - incorrect header check`);
+            expect(error.message).toBe(`Request to "${internals.baseUrl + port}" failed: Decompression error - incorrect header check`);
             expect(error.response.statusCode).toBe(200);
             expect(error.response.statusMessage).toBe('OK');
             expect(error.response.payload).toBe(undefined);             // Failed at decompression step, therefore no payload will be returned
@@ -470,7 +470,7 @@ describe('request()', () => {
 
         const auth = 'username:password';
         const encoded = Buffer.from(auth).toString('base64');
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.headers.authorization).toBe(`Basic ${encoded}`);
 
@@ -478,7 +478,7 @@ describe('request()', () => {
             response.end(internals.defaultPayload);
         });
 
-        const response = await Bornite.get(`http://${auth}@localhost:3000/`);
+        const response = await Bornite.get(`http://${auth}@localhost:${port}/`);
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -488,7 +488,7 @@ describe('request()', () => {
 
         const auth = ':password';
         const encoded = Buffer.from(auth).toString('base64');
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.headers.authorization).toBe(`Basic ${encoded}`);
 
@@ -496,7 +496,7 @@ describe('request()', () => {
             response.end(internals.defaultPayload);
         });
 
-        const response = await Bornite.get(`http://${auth}@localhost:3000/`);
+        const response = await Bornite.get(`http://${auth}@localhost:${port}/`);
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -504,26 +504,26 @@ describe('request()', () => {
 
     it('should reject if response payload exceeds maxBytes', async () => {
 
-        const server = await internals.server((_, response) => {
+        const { server, port } = await internals.server((_, response) => {
 
             response.writeHead(200, { 'Content-Type': 'text/plain' });
             response.end(internals.longPayload);
         });
 
-        await expect(Bornite.get(internals.baseUrl, { maxBytes: 100 })).rejects.toThrow('Maximum payload size reached');
+        await expect(Bornite.get(internals.baseUrl + port, { maxBytes: 100 })).rejects.toThrow('Maximum payload size reached');
 
         server.close();
     });
 
     it('should not reject response payload if less than maxBytes', async () => {
 
-        const server = await internals.server((_, response) => {
+        const { server, port } = await internals.server((_, response) => {
 
             response.writeHead(200, { 'Content-Type': 'text/plain' });
             response.end(internals.longPayload);
         });
 
-        const response = await Bornite.get(internals.baseUrl, { maxBytes: 10000 });
+        const response = await Bornite.get(internals.baseUrl + port, { maxBytes: 10000 });
         expect(response.payload).toBe(internals.longPayload);
 
         server.close();
@@ -531,13 +531,13 @@ describe('request()', () => {
 
     it('should handle 4xx errors', async () => {
 
-        const server = await internals.server((_, response) => {
+        const { server, port } = await internals.server((_, response) => {
 
             response.writeHead(404);
             response.end();
         });
 
-        const response = await Bornite.get(internals.baseUrl);
+        const response = await Bornite.get(internals.baseUrl + port);
 
         expect(response.statusCode).toBe(404);
         expect(response.statusMessage).toBe('Not Found');
@@ -555,12 +555,12 @@ describe('request()', () => {
             return request;
         };
 
-        const server = await internals.server((_, response) => {
+        const { server, port } = await internals.server((_, response) => {
 
             response.end();
         });
 
-        const promise = Bornite.get(internals.baseUrl);
+        const promise = Bornite.get(internals.baseUrl + port);
 
         request.emit('error', new Error('Some error'));
 
@@ -572,47 +572,48 @@ describe('request()', () => {
 
     it('should reject when host is unavailable', async () => {
 
-        await expect(Bornite.get(internals.baseUrl)).rejects.toThrow('connect ECONNREFUSED 127.0.0.1:3000');
+        const port = 3000;
+        await expect(Bornite.get(internals.baseUrl + port)).rejects.toThrow('connect ECONNREFUSED 127.0.0.1:' + port);
     });
 
     it('should perform a patch request', async () => {
 
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.method).toBe('PATCH');
 
             response.end();
         });
 
-        await Bornite.patch(internals.baseUrl);
+        await Bornite.patch(internals.baseUrl + port);
 
         server.close();
     });
 
     it('should perform a put request', async () => {
 
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.method).toBe('PUT');
 
             response.end();
         });
 
-        await Bornite.put(internals.baseUrl);
+        await Bornite.put(internals.baseUrl + port);
 
         server.close();
     });
 
     it('should perform a delete request', async () => {
 
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.method).toBe('DELETE');
 
             response.end();
         });
 
-        await Bornite.delete(internals.baseUrl);
+        await Bornite.delete(internals.baseUrl + port);
 
         server.close();
     });
@@ -629,12 +630,12 @@ describe('request()', () => {
             return original(options);
         };
 
-        const server = await internals.server((_, response) => {
+        const { server, port } = await internals.server((_, response) => {
 
             response.end();
         });
 
-        await Bornite.get(internals.baseUrl, { agent });
+        await Bornite.get(internals.baseUrl + port, { agent });
 
         server.close();
         Http.request = original; // eslint-disable-line require-atomic-updates
@@ -642,7 +643,7 @@ describe('request()', () => {
 
     it('should resolve urls from baseUrl', async () => {
 
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.url).toBe('/test');
 
@@ -650,7 +651,7 @@ describe('request()', () => {
             response.end(internals.defaultPayload);
         });
 
-        const response = await Bornite.get('/test', { baseUrl: internals.baseUrl });
+        const response = await Bornite.get('/test', { baseUrl: internals.baseUrl + port });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -658,13 +659,13 @@ describe('request()', () => {
 
     it('should ignore baseUrl when path is absolute', async () => {
 
-        const response = await Bornite.get('https://www.google.com', { baseUrl: internals.baseUrl });
+        const response = await Bornite.get('https://www.google.com', { baseUrl: internals.baseUrl + 3000 });
         expect(response.payload.toLowerCase().includes('</html>')).toBe(true);
     });
 
     it('should append paths to baseUrl', async () => {
 
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.url).toBe('/test/test2/test3/test4');
 
@@ -672,7 +673,7 @@ describe('request()', () => {
             response.end(internals.defaultPayload);
         });
 
-        const response = await Bornite.get('/test3/test4', { baseUrl: internals.baseUrl + '/test/test2' });
+        const response = await Bornite.get('/test3/test4', { baseUrl: internals.baseUrl + port + '/test/test2' });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -680,7 +681,7 @@ describe('request()', () => {
 
     it('should append paths to baseUrl with trailing "/"', async () => {
 
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             expect(request.url).toBe('/test/test2/test3/test4');
 
@@ -688,7 +689,7 @@ describe('request()', () => {
             response.end(internals.defaultPayload);
         });
 
-        const response = await Bornite.get('test3/test4', { baseUrl: internals.baseUrl + '/test/test2/' });
+        const response = await Bornite.get('test3/test4', { baseUrl: internals.baseUrl + port + '/test/test2/' });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -696,18 +697,18 @@ describe('request()', () => {
 
     it('should throw if validateStatus returns false (default validator)', async () => {
 
-        const server = await internals.server((_, response) => {
+        const { server, port } = await internals.server((_, response) => {
 
             response.writeHead(404, { 'Content-Type': 'application/json' });
             response.end(JSON.stringify(internals.jsonPayload));
         });
 
         try {
-            await Bornite.get(internals.baseUrl, { validateStatus: true });
+            await Bornite.get(internals.baseUrl + port, { validateStatus: true });
             throw new Error('');            // Throw dummy message to trigger catch block in case request does not fail
         }
         catch (error) {
-            expect(error.message).toBe(`Request to "${internals.baseUrl}" failed: Server responded with status code 404 - Not Found`);
+            expect(error.message).toBe(`Request to "${internals.baseUrl + port}" failed: Server responded with status code 404 - Not Found`);
             expect(error.response.statusCode).toBe(404);
             expect(error.response.statusMessage).toBe('Not Found');
             expect(Bone.equal(error.response.payload, internals.jsonPayload)).toBe(true);
@@ -718,18 +719,18 @@ describe('request()', () => {
 
     it('should throw if validateStatus returns false (custom validator)', async () => {
 
-        const server = await internals.server((_, response) => {
+        const { server, port } = await internals.server((_, response) => {
 
             response.writeHead(200, { 'Content-Type': 'application/json' });
             response.end(JSON.stringify(internals.jsonPayload));
         });
 
         try {
-            await Bornite.get(internals.baseUrl, { validateStatus: () => false });
+            await Bornite.get(internals.baseUrl + port, { validateStatus: () => false });
             throw new Error('');            // Throw dummy message to trigger catch block in case request does not fail
         }
         catch (error) {
-            expect(error.message).toBe(`Request to "${internals.baseUrl}" failed: Server responded with status code 200 - OK`);
+            expect(error.message).toBe(`Request to "${internals.baseUrl + port}" failed: Server responded with status code 200 - OK`);
             expect(error.response.statusCode).toBe(200);
             expect(error.response.statusMessage).toBe('OK');
             expect(Bone.equal(error.response.payload, internals.jsonPayload)).toBe(true);
@@ -740,13 +741,13 @@ describe('request()', () => {
 
     it('should continue if validateStatus returns true', async () => {
 
-        const server = await internals.server((request, response) => {
+        const { server, port } = await internals.server((request, response) => {
 
             response.writeHead(200, { 'Content-Type': 'text/plain' });
             request.pipe(response);
         });
 
-        const response = await Bornite.post(internals.baseUrl, { payload: internals.defaultPayload, validateStatus: true });
+        const response = await Bornite.post(internals.baseUrl + port, { payload: internals.defaultPayload, validateStatus: true });
         expect(response.payload).toBe(internals.defaultPayload);
 
         server.close();
@@ -756,39 +757,39 @@ describe('request()', () => {
 
         it('should not follow redirects by default', async () => {
 
-            const server = await internals.server((_, response) => {
+            const { server, port } = await internals.server((_, response) => {
 
                 response.writeHead(301, { Location: '/test' });
                 response.end();
             });
 
-            await expect(Bornite.post(internals.baseUrl)).rejects.toThrow('Maximum redirects reached');
+            await expect(Bornite.post(internals.baseUrl + port)).rejects.toThrow('Maximum redirects reached');
 
             server.close();
         });
 
         it('should not follow redirects if redirects is set to false', async () => {
 
-            const server = await internals.server((_, response) => {
+            const { server, port } = await internals.server((_, response) => {
 
                 response.writeHead(301, { Location: '/test' });
                 response.end();
             });
 
-            await expect(Bornite.post(internals.baseUrl, { redirects: false })).rejects.toThrow('Maximum redirects reached');
+            await expect(Bornite.post(internals.baseUrl + port, { redirects: false })).rejects.toThrow('Maximum redirects reached');
 
             server.close();
         });
 
         it('should reject stream payloads', async () => {
 
-            const server = await internals.server((_, response) => {
+            const { server, port } = await internals.server((_, response) => {
 
                 response.writeHead(301, { Location: '/test' });
                 response.end();
             });
 
-            await expect(Bornite.post(internals.baseUrl, { redirects: 1, payload: internals.streamPayload }))
+            await expect(Bornite.post(internals.baseUrl + port, { redirects: 1, payload: internals.streamPayload }))
                 .rejects
                 .toThrow('Cannot follow redirects with stream payloads');
 
@@ -798,7 +799,7 @@ describe('request()', () => {
         it('should follow all redirects if redirects is set to Infinity', async () => {
 
             let count = 0;
-            const server = await internals.server((request, response) => {
+            const { server, port } = await internals.server((request, response) => {
 
                 if (count < 3) {
                     response.writeHead(301, { Location: '/test' });
@@ -815,7 +816,7 @@ describe('request()', () => {
                 request.pipe(response);
             });
 
-            const response = await Bornite.post(internals.baseUrl, { redirects: Infinity, payload: internals.defaultPayload });
+            const response = await Bornite.post(internals.baseUrl + port, { redirects: Infinity, payload: internals.defaultPayload });
             expect(response.payload).toBe(internals.defaultPayload);
 
             server.close();
@@ -824,7 +825,7 @@ describe('request()', () => {
         it('should reject if reaches maximum redirects', async () => {
 
             let count = 0;
-            const server = await internals.server((_, response) => {
+            const { server, port } = await internals.server((_, response) => {
 
                 if (count < 2) {
                     response.writeHead(301, { Location: '/test' });
@@ -833,20 +834,20 @@ describe('request()', () => {
                 }
             });
 
-            await expect(Bornite.post(internals.baseUrl, { redirects: 1 })).rejects.toThrow('Maximum redirects reached');
+            await expect(Bornite.post(internals.baseUrl + port, { redirects: 1 })).rejects.toThrow('Maximum redirects reached');
 
             server.close();
         });
 
         it('should reject on redirects without headers', async () => {
 
-            const server = await internals.server((_, response) => {
+            const { server, port } = await internals.server((_, response) => {
 
                 response.writeHead(301);
                 response.end();
             });
 
-            await expect(Bornite.post(internals.baseUrl, { redirects: 1 })).rejects.toThrow('Redirect without location');
+            await expect(Bornite.post(internals.baseUrl + port, { redirects: 1 })).rejects.toThrow('Redirect without location');
 
             server.close();
         });
@@ -854,7 +855,7 @@ describe('request()', () => {
         it('should allow changing redirect methods', async () => {
 
             let redirected = false;
-            const server = await internals.server((request, response) => {
+            const { server, port } = await internals.server((request, response) => {
 
                 if (!redirected) {
                     response.writeHead(301, { Location: '/test' });
@@ -870,7 +871,7 @@ describe('request()', () => {
                 response.end(internals.defaultPayload);
             });
 
-            const response = await Bornite.get(internals.baseUrl, { redirects: 1, redirectMethod: 'POST' });
+            const response = await Bornite.get(internals.baseUrl + port, { redirects: 1, redirectMethod: 'POST' });
             expect(response.payload).toBe(internals.defaultPayload);
 
             server.close();
@@ -879,7 +880,7 @@ describe('request()', () => {
         it('should strip payload if redirect method is GET (302)', async () => {
 
             let redirected = false;
-            const server = await internals.server(async (request, response) => {
+            const { server, port } = await internals.server(async (request, response) => {
 
                 if (!redirected) {
                     response.writeHead(302, { Location: '/test' });
@@ -899,7 +900,7 @@ describe('request()', () => {
                 response.end(internals.defaultPayload);
             });
 
-            const response = await Bornite.post(internals.baseUrl, {
+            const response = await Bornite.post(internals.baseUrl + port, {
                 redirects: 1,
                 redirectMethod: 'GET',
                 payload: internals.jsonPayload,
@@ -913,7 +914,7 @@ describe('request()', () => {
         it('should strip payload for 303 redirects', async () => {
 
             let redirected = false;
-            const server = await internals.server(async (request, response) => {
+            const { server, port } = await internals.server(async (request, response) => {
 
                 if (!redirected) {
                     response.writeHead(303, { Location: '/test' });
@@ -933,7 +934,7 @@ describe('request()', () => {
                 response.end(internals.defaultPayload);
             });
 
-            const response = await Bornite.post(internals.baseUrl, {
+            const response = await Bornite.post(internals.baseUrl + port, {
                 redirects: 1,
                 payload: internals.jsonPayload,
             });
@@ -946,7 +947,7 @@ describe('request()', () => {
         it('should not override redirect method (307)', async () => {
 
             let redirected = false;
-            const server = await internals.server((request, response) => {
+            const { server, port } = await internals.server((request, response) => {
 
                 if (!redirected) {
                     response.writeHead(307, { Location: '/test' });
@@ -963,7 +964,7 @@ describe('request()', () => {
                 request.pipe(response);
             });
 
-            const response = await Bornite.post(internals.baseUrl, {
+            const response = await Bornite.post(internals.baseUrl + port, {
                 redirects: 1,
                 redirectMethod: 'GET',
                 payload: internals.defaultPayload,
@@ -977,7 +978,7 @@ describe('request()', () => {
         it('should not override redirect method (308)', async () => {
 
             let redirected = false;
-            const server = await internals.server((request, response) => {
+            const { server, port } = await internals.server((request, response) => {
 
                 if (!redirected) {
                     response.writeHead(308, { Location: '/test' });
@@ -994,7 +995,7 @@ describe('request()', () => {
                 request.pipe(response);
             });
 
-            const response = await Bornite.post(internals.baseUrl, {
+            const response = await Bornite.post(internals.baseUrl + port, {
                 redirects: 1,
                 redirectMethod: 'GET',
                 payload: internals.defaultPayload,
@@ -1008,10 +1009,10 @@ describe('request()', () => {
         it('should redirect with absolute locations', async () => {
 
             let redirected = false;
-            const server = await internals.server((request, response) => {
+            const { server, port } = await internals.server((request, response) => {
 
                 if (!redirected) {
-                    response.writeHead(301, { Location: internals.baseUrl + '/test' });
+                    response.writeHead(301, { Location: internals.baseUrl + port + '/test' });
                     response.end();
                     redirected = true;
                     return;
@@ -1024,7 +1025,7 @@ describe('request()', () => {
                 request.pipe(response);
             });
 
-            const response = await Bornite.post(internals.baseUrl, { redirects: 1, payload: internals.defaultPayload });
+            const response = await Bornite.post(internals.baseUrl + port, { redirects: 1, payload: internals.defaultPayload });
             expect(response.payload).toBe(internals.defaultPayload);
 
             server.close();
@@ -1033,7 +1034,7 @@ describe('request()', () => {
         it('should redirect with json', async () => {
 
             let redirected = false;
-            const server = await internals.server((request, response) => {
+            const { server, port } = await internals.server((request, response) => {
 
                 if (!redirected) {
                     response.writeHead(301, { Location: '/test' });
@@ -1050,7 +1051,7 @@ describe('request()', () => {
                 request.pipe(response);
             });
 
-            const response = await Bornite.post(internals.baseUrl, { redirects: 1, payload: internals.jsonPayload });
+            const response = await Bornite.post(internals.baseUrl + port, { redirects: 1, payload: internals.jsonPayload });
             expect(Bone.equal(response.payload, internals.jsonPayload)).toBe(true);
 
             server.close();
@@ -1058,13 +1059,13 @@ describe('request()', () => {
 
         it('should redirect to a different host', async () => {
 
-            const server = await internals.server((_, response) => {
+            const { server, port } = await internals.server((_, response) => {
 
                 response.writeHead(301, { Location: 'https://www.google.com' });
                 response.end();
             });
 
-            const response = await Bornite.get(internals.baseUrl, { redirects: 1 });
+            const response = await Bornite.get(internals.baseUrl + port, { redirects: 1 });
             expect(response.payload.toLowerCase().includes('</html>')).toBe(true);
 
             server.close();
@@ -1078,9 +1079,9 @@ internals.server = function (handler) {
 
     return new Promise((resolve) => {
 
-        server.listen(3000, () => {
+        server.listen(0, () => {
 
-            resolve(server);
+            resolve({ server, port: server.address().port });
         });
     });
 };
