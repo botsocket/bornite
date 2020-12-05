@@ -621,9 +621,11 @@ describe('request()', () => {
 
         const agent = new Http.Agent({ maxSockets: 5 });
         const original = Http.request;
+        let calls = 0;
 
         Http.request = function (options) {
 
+            calls++;
             expect(options.agent).toBe(agent);
 
             return original(options);
@@ -635,6 +637,8 @@ describe('request()', () => {
         });
 
         await Bornite.get(internals.baseUrl + port, { agent });
+
+        expect(calls).toBe(1);
 
         server.close();
         Http.request = original; // eslint-disable-line require-atomic-updates
