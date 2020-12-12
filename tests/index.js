@@ -33,7 +33,11 @@ afterEach(() => {
     if (internals.server) {
         const server = internals.server;
         internals.server = null;
-        server.close();
+
+        return new Promise((resolve) => {
+
+            server.close(resolve);
+        });
     }
 });
 
